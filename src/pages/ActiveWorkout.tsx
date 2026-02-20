@@ -252,8 +252,6 @@ export function ActiveWorkout() {
         }
       }
     }
-    
-    setIsEditing(false);
   };
 
   const handleFinishWorkout = async () => {
@@ -261,6 +259,7 @@ export function ActiveWorkout() {
     if (workoutId) {
       await db.workouts.update(workoutId, { completedAt: new Date() });
     }
+    setIsEditing(false);
   };
 
   const handleRepeatWorkout = async () => {
