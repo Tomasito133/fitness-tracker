@@ -1,31 +1,67 @@
+import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Dumbbell, Clock, Calendar, ChevronRight, Flame } from 'lucide-react';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
+import { Plus, Dumbbell, Trophy, MoreHorizontal } from 'lucide-react';
+import { Card, CardContent } from '../components/ui';
+import { WeekCalendar } from '../components/WeekCalendar';
+import { WorkoutCard } from '../components/WorkoutCard';
 import { db, seedExercises } from '../db';
-import { useEffect } from 'react';
-import { formatShortDate, getMuscleGroupLabel, getTodayString } from '../lib/utils';
+import { groupByWeek, getTodayString } from '../lib/utils';
+
+const ACCENT_COLORS = [
+  'bg-red-500',
+  'bg-blue-500',
+  'bg-green-500',
+  'bg-purple-500',
+  'bg-orange-500',
+  'bg-pink-500',
+  'bg-teal-500',
+];
 
 export function Workouts() {
   const navigate = useNavigate();
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   useEffect(() => {
     seedExercises();
   }, []);
 
   const workouts = useLiveQuery(
-    () => db.workouts.orderBy('date').reverse().limit(20).toArray()
+    () => db.workouts.orderBy('date').reverse().limit(50).toArray()
   );
 
   const allSets = useLiveQuery(() => db.workoutSets.toArray());
 
-  const exercises = useLiveQuery(() => db.exercises.toArray());
+  const workoutDates = useMemo(() => {
+    return workouts?.map(w => w.date) || [];
+  }, [workouts]);
 
-  const exercisesByGroup = exercises?.reduce((acc, ex) => {
-    if (!acc[ex.muscleGroup]) acc[ex.muscleGroup] = [];
-    acc[ex.muscleGroup].push(ex);
-    return acc;
-  }, {} as Record<string, typeof exercises>);
+  const workoutsWithStats = useMemo(() => {
+    if (!workouts || !allSets) return [];
+    
+    return workouts.map((workout, index) => {
+      const sets = allSets.filter(s => s.workoutId === workout.id);
+      const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
+      
+      let durationMinutes = 0;
+      if (workout.completedAt && workout.startedAt) {
+        const start = new Date(workout.startedAt).getTime();
+        const end = new Date(workout.completedAt).getTime();
+        durationMinutes = Math.round((end - start) / 60000);
+      }
+
+      return {
+        ...workout,
+        totalVolume,
+        durationMinutes,
+        accentColor: ACCENT_COLORS[index % ACCENT_COLORS.length],
+      };
+    });
+  }, [workouts, allSets]);
+
+  const weekGroups = useMemo(() => {
+    return groupByWeek(workoutsWithStats);
+  }, [workoutsWithStats]);
 
   const handleStartWorkout = async () => {
     const today = getTodayString();
@@ -37,92 +73,62 @@ export function Workouts() {
     navigate(`/workouts/${workoutId}`);
   };
 
-  const getWorkoutStats = (workoutId: number) => {
-    const sets = allSets?.filter(s => s.workoutId === workoutId) || [];
-    const totalSets = sets.length;
-    const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
-    const uniqueExercises = new Set(sets.map(s => s.exerciseId)).size;
-    return { totalSets, totalVolume, uniqueExercises };
-  };
-
-  const getWorkoutDuration = (workout: typeof workouts extends (infer T)[] | undefined ? T : never) => {
-    if (!workout?.completedAt) return null;
-    const start = new Date(workout.startedAt).getTime();
-    const end = new Date(workout.completedAt).getTime();
-    return Math.round((end - start) / 60000);
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Тренировки</h1>
-          <p className="text-muted-foreground">Записывайте свой прогресс</p>
-        </div>
-        <Button onClick={handleStartWorkout}>
-          <Plus className="w-4 h-4 mr-2" />
-          Новая
-        </Button>
+        <button className="text-primary font-medium">
+          Шаблоны
+        </button>
+        <h1 className="text-xl font-bold">Дневник</h1>
+        <button
+          onClick={handleStartWorkout}
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
       </div>
 
-      {workouts && workouts.length > 0 ? (
-        <div className="space-y-3">
-          <h2 className="font-semibold text-lg">История</h2>
-          {workouts.map((workout) => {
-            const stats = getWorkoutStats(workout.id!);
-            const duration = getWorkoutDuration(workout);
-            const isCompleted = !!workout.completedAt;
+      <WeekCalendar
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        workoutDates={workoutDates}
+      />
 
-            return (
-              <Card
-                key={workout.id}
-                className="cursor-pointer hover:bg-accent/50 transition-colors"
-                onClick={() => navigate(`/workouts/${workout.id}`)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${isCompleted ? 'bg-primary/10' : 'bg-warning/10'}`}>
-                        <Dumbbell className={`w-5 h-5 ${isCompleted ? 'text-primary' : 'text-warning'}`} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{workout.name}</p>
-                          {!isCompleted && (
-                            <span className="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded-full">
-                              В процессе
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {formatShortDate(workout.date)}
-                          </span>
-                          {duration && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {duration} мин
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right text-sm">
-                        <p className="font-medium">{stats.totalSets} подходов</p>
-                        <p className="text-muted-foreground flex items-center gap-1 justify-end">
-                          <Flame className="w-3 h-3" />
-                          {stats.totalVolume.toLocaleString()} кг
-                        </p>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+      {weekGroups.length > 0 ? (
+        <div className="space-y-6">
+          {weekGroups.map((group) => (
+            <div key={group.weekKey} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-500" />
+                  <span className="font-medium">{group.dateRange}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">
+                    {group.items.length} {group.items.length === 1 ? 'тренировка' : 
+                      group.items.length < 5 ? 'тренировки' : 'тренировок'}
+                  </span>
+                  <button className="p-1 rounded-full hover:bg-accent transition-colors">
+                    <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {group.items.map((workout) => (
+                  <WorkoutCard
+                    key={workout.id}
+                    date={workout.date}
+                    name={workout.name}
+                    durationMinutes={workout.durationMinutes}
+                    totalVolume={workout.totalVolume}
+                    accentColor={workout.accentColor}
+                    onClick={() => navigate(`/workouts/${workout.id}`)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <Card className="border-dashed">
@@ -132,31 +138,15 @@ export function Workouts() {
             <p className="text-muted-foreground text-center mb-4">
               Начните новую тренировку, чтобы отслеживать прогресс
             </p>
-            <Button onClick={handleStartWorkout}>
-              <Plus className="w-4 h-4 mr-2" />
+            <button
+              onClick={handleStartWorkout}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium"
+            >
+              <Plus className="w-4 h-4" />
               Начать тренировку
-            </Button>
+            </button>
           </CardContent>
         </Card>
-      )}
-
-      {exercisesByGroup && Object.keys(exercisesByGroup).length > 0 && (
-        <div className="space-y-3">
-          <h2 className="font-semibold text-lg">Упражнения по группам</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {Object.entries(exercisesByGroup).map(([group, exs]) => (
-              <Card key={group} className="cursor-pointer hover:bg-accent/50 transition-colors">
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm">{getMuscleGroupLabel(group)}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <p className="text-2xl font-bold">{exs?.length || 0}</p>
-                  <p className="text-xs text-muted-foreground">упражнений</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
       )}
     </div>
   );

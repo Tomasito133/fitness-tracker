@@ -16,7 +16,15 @@ interface DialogProps {
 }
 
 export function Dialog({ open, onOpenChange, children }: DialogProps) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/dc9b8520-5a0a-429d-a60a-22967b816805',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Dialog.tsx:18',message:'Dialog render',data:{open},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+
   if (!open) return null;
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/dc9b8520-5a0a-429d-a60a-22967b816805',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Dialog.tsx:23',message:'Dialog is OPEN, rendering content',data:{open},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
 
   return (
     <DialogContext.Provider value={{ open, onClose: () => onOpenChange(false) }}>

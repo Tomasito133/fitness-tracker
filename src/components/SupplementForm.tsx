@@ -101,6 +101,10 @@ export function SupplementForm({ open, onOpenChange, supplement, onSuccess }: Su
   const dosageUnits = ['мг', 'г', 'мкг', 'МЕ', 'мл', 'капс', 'табл'];
   const stockUnits = ['шт', 'капс', 'табл', 'г', 'мл', 'дней'];
 
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/dc9b8520-5a0a-429d-a60a-22967b816805',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SupplementForm.tsx:80',message:'SupplementForm render',data:{open, supplementName: supplement?.name || null},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
