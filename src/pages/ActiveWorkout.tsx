@@ -9,7 +9,7 @@ import { ExercisePicker } from '../components/ExercisePicker';
 import { SetInput } from '../components/SetInput';
 import { useRestTimer } from '../hooks/useRestTimer';
 import { useAppStore } from '../stores/appStore';
-import { formatDuration, formatShortDate, getMuscleGroupLabel } from '../lib/utils';
+import { formatDuration, formatDurationWithSeconds, formatShortDate, getMuscleGroupLabel } from '../lib/utils';
 
 interface ExerciseWithSets {
   exercise: Exercise;
@@ -387,7 +387,11 @@ export function ActiveWorkout() {
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="text-center">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Время</p>
-          <p className="text-2xl font-bold">{formatDuration(durationMinutes)}</p>
+          <p className="text-2xl font-bold">
+            {workout.completedAt 
+              ? formatDuration(durationMinutes) 
+              : formatDurationWithSeconds(currentTimeMs)}
+          </p>
         </div>
         <div className="text-center">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Объём</p>
