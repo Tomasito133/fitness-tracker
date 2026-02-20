@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Dumbbell, Trophy, MoreHorizontal } from 'lucide-react';
+import { Plus, Dumbbell, Trophy } from 'lucide-react';
 import { Card, CardContent } from '../components/ui';
 import { WeekCalendar } from '../components/WeekCalendar';
 import { WorkoutCard } from '../components/WorkoutCard';
 import { db, seedExercises } from '../db';
-import { groupByWeek, getTodayString } from '../lib/utils';
+import { getWeekDates, getTodayString } from '../lib/utils';
 import { Dialog } from '../components/ui/Dialog';
 
 export function Workouts() {
@@ -73,9 +73,15 @@ export function Workouts() {
     });
   }, [workouts, allSets]);
 
-  const weekGroups = useMemo(() => {
-    return groupByWeek(workoutsWithStats);
-  }, [workoutsWithStats]);
+  const filteredWorkouts = useMemo(() => {
+    const weekDates = getWeekDates(selectedDate);
+    const weekStart = weekDates[0].toISOString().split('T')[0];
+    const weekEnd = weekDates[6].toISOString().split('T')[0];
+    
+    return workoutsWithStats
+      .filter(w => w.date >= weekStart && w.date <= weekEnd)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [workoutsWithStats, selectedDate]);
 
   const handleStartWorkout = () => {
     setNewWorkoutDate(getTodayString());
@@ -132,55 +138,46 @@ export function Workouts() {
         workoutDates={workoutDates}
       />
 
-      {weekGroups.length > 0 ? (
-        <div className="space-y-6">
-          {weekGroups.map((group) => (
-            <div key={group.weekKey} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-4 h-4 text-amber-500" />
-                  <span className="font-medium">{group.dateRange}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground">
-                    {group.items.length} {group.items.length === 1 ? 'тренировка' : 
-                      group.items.length < 5 ? 'тренировки' : 'тренировок'}
-                  </span>
-                  <button className="p-1 rounded-full hover:bg-accent transition-colors">
-                    <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {group.items.map((workout) => (
-                  <WorkoutCard
-                    key={workout.id}
-                    date={workout.date}
-                    name={workout.name}
-                    durationMinutes={workout.durationMinutes}
-                    totalVolume={workout.totalVolume}
-                    onClick={() => navigate(`/workouts/${workout.id}`)}
-                    onNameChange={(newName) => handleNameChange(workout.id!, newName)}
-                    onDelete={() => handleDeleteClick(workout.id!, workout.name)}
-                    timerRunning={workout.timerRunning}
-                    timerAccumulatedMs={workout.timerAccumulatedMs}
-                    timerLastStartedAt={workout.timerLastStartedAt}
-                    isCompleted={!!workout.completedAt}
-                    isHighlighted={workout.date === selectedDate.toISOString().split('T')[0]}
-                  />
-                ))}
-              </div>
+      {filteredWorkouts.length > 0 ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-amber-500" />
+              <span className="font-medium">Тренировки на этой неделе</span>
             </div>
-          ))}
+            <span className="text-sm text-muted-foreground">
+              {filteredWorkouts.length} {filteredWorkouts.length === 1 ? 'тренировка' : 
+                filteredWorkouts.length < 5 ? 'тренировки' : 'тренировок'}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {filteredWorkouts.map((workout) => (
+              <WorkoutCard
+                key={workout.id}
+                date={workout.date}
+                name={workout.name}
+                durationMinutes={workout.durationMinutes}
+                totalVolume={workout.totalVolume}
+                onClick={() => navigate(`/workouts/${workout.id}`)}
+                onNameChange={(newName) => handleNameChange(workout.id!, newName)}
+                onDelete={() => handleDeleteClick(workout.id!, workout.name)}
+                timerRunning={workout.timerRunning}
+                timerAccumulatedMs={workout.timerAccumulatedMs}
+                timerLastStartedAt={workout.timerLastStartedAt}
+                isCompleted={!!workout.completedAt}
+                isHighlighted={workout.date === selectedDate.toISOString().split('T')[0]}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Dumbbell className="w-12 h-12 text-muted-foreground mb-4" />
-            <h3 className="font-semibold text-lg mb-1">Нет тренировок</h3>
+            <h3 className="font-semibold text-lg mb-1">Нет тренировок на этой неделе</h3>
             <p className="text-muted-foreground text-center mb-4">
-              Начните новую тренировку, чтобы отслеживать прогресс
+              Запланируйте тренировку или переключитесь на другую неделю
             </p>
             <button
               onClick={handleStartWorkout}
