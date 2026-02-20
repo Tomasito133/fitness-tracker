@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Check, X, Trash2 } from 'lucide-react';
 import { Button, Input } from './ui';
 import { cn } from '../lib/utils';
@@ -9,6 +9,7 @@ interface SetInputProps {
   defaultReps?: number;
   isCompleted?: boolean;
   onComplete: (weight: number, reps: number) => void;
+  onChange?: (weight: number, reps: number) => void;
   onDelete?: () => void;
   previousSet?: { weight: number; reps: number };
 }
@@ -19,12 +20,18 @@ export function SetInput({
   defaultReps = 0,
   isCompleted = false,
   onComplete,
+  onChange,
   onDelete,
   previousSet,
 }: SetInputProps) {
   const [weight, setWeight] = useState(defaultWeight || previousSet?.weight || 0);
   const [reps, setReps] = useState(defaultReps || previousSet?.reps || 0);
   const [isEditing, setIsEditing] = useState(!isCompleted);
+
+  useEffect(() => {
+    setWeight(defaultWeight || previousSet?.weight || 0);
+    setReps(defaultReps || previousSet?.reps || 0);
+  }, [defaultWeight, defaultReps, previousSet?.weight, previousSet?.reps]);
 
   const handleComplete = () => {
     if (reps > 0) {
@@ -35,6 +42,20 @@ export function SetInput({
 
   const handleEdit = () => {
     setIsEditing(true);
+  };
+
+  const handleWeightChange = (value: number) => {
+    setWeight(value);
+  };
+
+  const handleRepsChange = (value: number) => {
+    setReps(value);
+  };
+
+  const handleBlur = () => {
+    if (onChange) {
+      onChange(weight, reps);
+    }
   };
 
   return (
@@ -58,7 +79,8 @@ export function SetInput({
               <Input
                 type="number"
                 value={weight || ''}
-                onChange={(e) => setWeight(Number(e.target.value))}
+                onChange={(e) => handleWeightChange(Number(e.target.value))}
+                onBlur={handleBlur}
                 placeholder="0"
                 className="h-9 text-center"
                 inputMode="decimal"
@@ -69,7 +91,8 @@ export function SetInput({
               <Input
                 type="number"
                 value={reps || ''}
-                onChange={(e) => setReps(Number(e.target.value))}
+                onChange={(e) => handleRepsChange(Number(e.target.value))}
+                onBlur={handleBlur}
                 placeholder="0"
                 className="h-9 text-center"
                 inputMode="numeric"

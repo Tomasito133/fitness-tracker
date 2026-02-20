@@ -167,6 +167,20 @@ export function ActiveWorkout() {
     setExercisesWithSets(updated);
   };
 
+  const handleSetChange = async (exerciseIndex: number, setIndex: number, weight: number, reps: number) => {
+    const updated = [...exercisesWithSets];
+    const set = updated[exerciseIndex].sets[setIndex];
+    
+    set.weight = weight;
+    set.reps = reps;
+
+    if (set.id) {
+      await db.workoutSets.update(set.id, { weight, reps });
+    }
+
+    setExercisesWithSets(updated);
+  };
+
   const handleCompleteSet = async (exerciseIndex: number, setIndex: number, weight: number, reps: number) => {
     const updated = [...exercisesWithSets];
     const set = updated[exerciseIndex].sets[setIndex];
@@ -176,21 +190,8 @@ export function ActiveWorkout() {
     set.completedAt = new Date();
     set.isNew = false;
 
-    if (workoutId) {
-      if (set.id) {
-        await db.workoutSets.update(set.id, { weight, reps, completedAt: set.completedAt });
-      } else {
-        const newId = await db.workoutSets.add({
-          workoutId,
-          exerciseId: set.exerciseId,
-          setNumber: set.setNumber,
-          weight,
-          reps,
-          restSeconds: defaultRestSeconds,
-          completedAt: set.completedAt,
-        });
-        set.id = newId as number;
-      }
+    if (set.id) {
+      await db.workoutSets.update(set.id, { weight, reps, completedAt: set.completedAt });
     }
 
     setExercisesWithSets(updated);
@@ -429,6 +430,7 @@ export function ActiveWorkout() {
                       defaultReps={set.reps}
                       isCompleted={!set.isNew && set.reps > 0}
                       onComplete={(weight, reps) => handleCompleteSet(exerciseIndex, setIndex, weight, reps)}
+                      onChange={(weight, reps) => handleSetChange(exerciseIndex, setIndex, weight, reps)}
                       onDelete={() => handleDeleteSet(exerciseIndex, setIndex)}
                       previousSet={setIndex > 0 ? {
                         weight: exerciseData.sets[setIndex - 1].weight,
