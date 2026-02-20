@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Check, ChevronLeft, Clock, Dumbbell, Trash2 } from 'lucide-react';
+import { Plus, Check, ChevronLeft, Clock, Dumbbell, Trash2, Pencil } from 'lucide-react';
 import { db, type Exercise, type WorkoutSet } from '../db';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { RestTimer } from '../components/RestTimer';
@@ -28,6 +28,9 @@ export function ActiveWorkout() {
   const [exercisesWithSets, setExercisesWithSets] = useState<ExerciseWithSets[]>([]);
   const [workoutStartTime] = useState(new Date());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [workoutName, setWorkoutName] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const workout = useLiveQuery(
     () => workoutId ? db.workouts.get(workoutId) : undefined,
@@ -47,6 +50,37 @@ export function ActiveWorkout() {
     }, 1000);
     return () => clearInterval(interval);
   }, [workoutStartTime]);
+
+  useEffect(() => {
+    if (workout?.name) {
+      setWorkoutName(workout.name);
+    }
+  }, [workout?.name]);
+
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+
+  const handleSaveName = async () => {
+    const trimmedName = workoutName.trim() || 'Тренировка';
+    if (workoutId && trimmedName !== workout?.name) {
+      await db.workouts.update(workoutId, { name: trimmedName });
+    }
+    setWorkoutName(trimmedName);
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveName();
+    } else if (e.key === 'Escape') {
+      setWorkoutName(workout?.name || 'Тренировка');
+      setIsEditingName(false);
+    }
+  };
 
   useEffect(() => {
     if (savedSets && savedSets.length > 0 && exercises) {
@@ -187,9 +221,28 @@ export function ActiveWorkout() {
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {workout?.name || 'Новая тренировка'}
-        </h1>
+        {isEditingName ? (
+          <input
+            ref={nameInputRef}
+            type="text"
+            value={workoutName}
+            onChange={(e) => setWorkoutName(e.target.value)}
+            onBlur={handleSaveName}
+            onKeyDown={handleNameKeyDown}
+            className="text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary outline-none w-full"
+            placeholder="Название тренировки"
+          />
+        ) : (
+          <button
+            onClick={() => setIsEditingName(true)}
+            className="flex items-center gap-2 group text-left"
+          >
+            <h1 className="text-2xl font-bold tracking-tight">
+              {workoutName || workout?.name || 'Новая тренировка'}
+            </h1>
+            <Pencil className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+        )}
         <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
           <span className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
