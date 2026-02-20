@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Dumbbell, Trophy } from 'lucide-react';
 import { Card, CardContent } from '../components/ui';
 import { WeekCalendar } from '../components/WeekCalendar';
@@ -9,9 +9,35 @@ import { db, seedExercises } from '../db';
 import { getWeekDates, getTodayString } from '../lib/utils';
 import { Dialog } from '../components/ui/Dialog';
 
+const WORKOUTS_DATE_KEY = 'workoutsSelectedDate';
+
 export function Workouts() {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const dateParam = searchParams.get('date');
+  const selectedDate = useMemo(() => {
+    if (!dateParam) return new Date();
+    const parsed = new Date(dateParam);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+  }, [dateParam]);
+  const setSelectedDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    setSearchParams({ date: dateStr }, { replace: true });
+    try {
+      localStorage.setItem(WORKOUTS_DATE_KEY, dateStr);
+    } catch (_) {}
+  };
+  useEffect(() => {
+    if (!dateParam) {
+      try {
+        const stored = localStorage.getItem(WORKOUTS_DATE_KEY);
+        if (stored) {
+          const parsed = new Date(stored);
+          if (!isNaN(parsed.getTime())) setSearchParams({ date: stored }, { replace: true });
+        }
+      } catch (_) {}
+    }
+  }, [dateParam, setSearchParams]);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newWorkoutDate, setNewWorkoutDate] = useState(getTodayString());
