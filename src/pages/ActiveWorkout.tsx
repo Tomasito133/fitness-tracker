@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Check, ChevronLeft, Clock, Dumbbell, Trash2, Pencil } from 'lucide-react';
+import { Plus, ChevronDown, MoreHorizontal, Heart, Share2, Pencil, RefreshCw, Trash2, Dumbbell } from 'lucide-react';
 import { db, type Exercise, type WorkoutSet } from '../db';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { RestTimer } from '../components/RestTimer';
@@ -9,7 +9,7 @@ import { ExercisePicker } from '../components/ExercisePicker';
 import { SetInput } from '../components/SetInput';
 import { useRestTimer } from '../hooks/useRestTimer';
 import { useAppStore } from '../stores/appStore';
-import { getMuscleGroupLabel, formatTime } from '../lib/utils';
+import { formatDuration, formatShortDate, getMuscleGroupLabel } from '../lib/utils';
 
 interface ExerciseWithSets {
   exercise: Exercise;
@@ -26,8 +26,7 @@ export function ActiveWorkout() {
   
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [exercisesWithSets, setExercisesWithSets] = useState<ExerciseWithSets[]>([]);
-  const [workoutStartTime] = useState(new Date());
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [workoutName, setWorkoutName] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -45,11 +44,10 @@ export function ActiveWorkout() {
   const exercises = useLiveQuery(() => db.exercises.toArray());
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - workoutStartTime.getTime()) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [workoutStartTime]);
+    if (workout && !workout.completedAt) {
+      setIsEditing(true);
+    }
+  }, [workout]);
 
   useEffect(() => {
     if (workout?.name) {
@@ -195,32 +193,82 @@ export function ActiveWorkout() {
     if (workoutId) {
       await db.workouts.update(workoutId, { completedAt: new Date() });
     }
-    navigate('/workouts');
+    setIsEditing(false);
   };
 
-  const totalSets = exercisesWithSets.reduce((sum, e) => sum + e.sets.filter(s => !s.isNew && s.reps > 0).length, 0);
+  const handleRepeatWorkout = async () => {
+    if (!workout || !workoutId) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const newWorkoutId = await db.workouts.add({
+      name: workout.name,
+      date: today,
+      startedAt: new Date(),
+    });
+
+    for (const exerciseData of exercisesWithSets) {
+      for (const set of exerciseData.sets) {
+        await db.workoutSets.add({
+          workoutId: newWorkoutId as number,
+          exerciseId: set.exerciseId,
+          setNumber: set.setNumber,
+          weight: set.weight,
+          reps: 0,
+          restSeconds: set.restSeconds,
+          completedAt: new Date(),
+        });
+      }
+    }
+
+    navigate(`/workouts/${newWorkoutId}`);
+  };
+
   const totalVolume = exercisesWithSets.reduce(
     (sum, e) => sum + e.sets.filter(s => !s.isNew).reduce((s, set) => s + set.weight * set.reps, 0),
     0
   );
 
-  return (
-    <div className="space-y-6 pb-24">
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/workouts')}
-          className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
-        >
-          <ChevronLeft className="w-5 h-5" />
-          Назад
-        </button>
-        <Button onClick={handleFinishWorkout} disabled={totalSets === 0}>
-          <Check className="w-4 h-4 mr-2" />
-          Завершить
-        </Button>
-      </div>
+  const durationMinutes = useMemo(() => {
+    if (!workout) return 0;
+    const start = new Date(workout.startedAt).getTime();
+    const end = workout.completedAt ? new Date(workout.completedAt).getTime() : Date.now();
+    return Math.round((end - start) / 60000);
+  }, [workout]);
 
-      <div>
+  const startTime = workout?.startedAt ? new Date(workout.startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+
+  const formatSetsCompact = (sets: WorkoutSet[]) => {
+    return sets
+      .filter(s => s.reps > 0)
+      .map(s => `${s.weight} кг × ${s.reps}`)
+      .join(', ');
+  };
+
+  if (!workout) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pb-24">
+      {/* Header */}
+      <div className="bg-gradient-to-b from-orange-500 to-red-500 -mx-4 -mt-4 px-4 pt-4 pb-6 rounded-b-3xl mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => navigate('/workouts')}
+            className="flex items-center gap-1 text-white/80 hover:text-white"
+          >
+            <ChevronDown className="w-5 h-5" />
+            {formatShortDate(workout.date)}, {startTime}
+          </button>
+          <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
+            <MoreHorizontal className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
         {isEditingName ? (
           <input
             ref={nameInputRef}
@@ -229,98 +277,181 @@ export function ActiveWorkout() {
             onChange={(e) => setWorkoutName(e.target.value)}
             onBlur={handleSaveName}
             onKeyDown={handleNameKeyDown}
-            className="text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary outline-none w-full"
+            className="text-3xl font-bold text-white bg-transparent border-b-2 border-white/50 outline-none w-full"
             placeholder="Название тренировки"
           />
         ) : (
           <button
             onClick={() => setIsEditingName(true)}
-            className="flex items-center gap-2 group text-left"
+            className="text-left w-full"
           >
-            <h1 className="text-2xl font-bold tracking-tight">
-              {workoutName || workout?.name || 'Новая тренировка'}
+            <h1 className="text-3xl font-bold text-white">
+              {workoutName || workout.name || 'Тренировка'}
             </h1>
-            <Pencil className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
         )}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-          <span className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />
-            {formatTime(elapsedSeconds)}
-          </span>
-          <span>{totalSets} подходов</span>
-          <span>{totalVolume.toLocaleString()} кг</span>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Время</p>
+          <p className="text-2xl font-bold">{formatDuration(durationMinutes)}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Объём</p>
+          <p className="text-2xl font-bold">{totalVolume.toLocaleString('ru-RU')} кг</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1 flex items-center justify-center gap-1">
+            Ср. <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+          </p>
+          <p className="text-2xl font-bold text-muted-foreground">—</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Калории</p>
+          <p className="text-2xl font-bold text-muted-foreground">—</p>
         </div>
       </div>
 
-      <RestTimer
-        seconds={restTimer.seconds}
-        isRunning={restTimer.isRunning}
-        progress={restTimer.progress}
-        onStart={restTimer.start}
-        onPause={restTimer.pause}
-        onResume={restTimer.resume}
-        onReset={restTimer.reset}
-        onAddTime={restTimer.addTime}
-      />
+      {/* Rest Timer (only in edit mode) */}
+      {isEditing && (
+        <div className="mb-6">
+          <RestTimer
+            seconds={restTimer.seconds}
+            isRunning={restTimer.isRunning}
+            progress={restTimer.progress}
+            onStart={restTimer.start}
+            onPause={restTimer.pause}
+            onResume={restTimer.resume}
+            onReset={restTimer.reset}
+            onAddTime={restTimer.addTime}
+          />
+        </div>
+      )}
 
-      {exercisesWithSets.map((exerciseData, exerciseIndex) => (
-        <Card key={exerciseData.exercise.id}>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base">{exerciseData.exercise.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {getMuscleGroupLabel(exerciseData.exercise.muscleGroup)}
-                </p>
+      {/* Exercises List */}
+      <div className="space-y-4">
+        {exercisesWithSets.map((exerciseData, exerciseIndex) => (
+          <div key={exerciseData.exercise.id}>
+            {isEditing ? (
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">{exerciseData.exercise.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        {getMuscleGroupLabel(exerciseData.exercise.muscleGroup)}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveExercise(exerciseIndex)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {exerciseData.sets.map((set, setIndex) => (
+                    <SetInput
+                      key={`${set.id || 'new'}-${setIndex}`}
+                      setNumber={set.setNumber}
+                      defaultWeight={set.weight}
+                      defaultReps={set.reps}
+                      isCompleted={!set.isNew && set.reps > 0}
+                      onComplete={(weight, reps) => handleCompleteSet(exerciseIndex, setIndex, weight, reps)}
+                      onDelete={() => handleDeleteSet(exerciseIndex, setIndex)}
+                      previousSet={setIndex > 0 ? {
+                        weight: exerciseData.sets[setIndex - 1].weight,
+                        reps: exerciseData.sets[setIndex - 1].reps,
+                      } : undefined}
+                    />
+                  ))}
+
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleAddSet(exerciseIndex)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Добавить подход
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="flex gap-4 py-3 border-b border-border/50">
+                <span className="text-muted-foreground w-6 shrink-0">{exerciseIndex + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">{exerciseData.exercise.name}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {formatSetsCompact(exerciseData.sets) || 'Нет подходов'}
+                  </p>
+                </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleRemoveExercise(exerciseIndex)}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {exerciseData.sets.map((set, setIndex) => (
-              <SetInput
-                key={`${set.id || 'new'}-${setIndex}`}
-                setNumber={set.setNumber}
-                defaultWeight={set.weight}
-                defaultReps={set.reps}
-                isCompleted={!set.isNew && set.reps > 0}
-                onComplete={(weight, reps) => handleCompleteSet(exerciseIndex, setIndex, weight, reps)}
-                onDelete={() => handleDeleteSet(exerciseIndex, setIndex)}
-                previousSet={setIndex > 0 ? {
-                  weight: exerciseData.sets[setIndex - 1].weight,
-                  reps: exerciseData.sets[setIndex - 1].reps,
-                } : undefined}
-              />
-            ))}
+            )}
+          </div>
+        ))}
+      </div>
 
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => handleAddSet(exerciseIndex)}
+      {/* Add Exercise Button (edit mode) */}
+      {isEditing && (
+        <Button
+          variant="outline"
+          className="w-full h-14 border-dashed mt-6"
+          onClick={() => setShowExercisePicker(true)}
+        >
+          <Dumbbell className="w-5 h-5 mr-2" />
+          Добавить упражнение
+        </Button>
+      )}
+
+      {/* Bottom Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 flex items-center justify-center gap-4">
+        {isEditing ? (
+          <>
+            <button
+              onClick={() => setShowExercisePicker(true)}
+              className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Добавить подход
-            </Button>
-          </CardContent>
-        </Card>
-      ))}
-
-      <Button
-        variant="outline"
-        className="w-full h-14 border-dashed"
-        onClick={() => setShowExercisePicker(true)}
-      >
-        <Dumbbell className="w-5 h-5 mr-2" />
-        Добавить упражнение
-      </Button>
+              <Plus className="w-6 h-6" />
+            </button>
+            <button
+              onClick={handleFinishWorkout}
+              className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-medium"
+            >
+              Завершить
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => setShowExercisePicker(true)}
+              className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+            <button
+              onClick={handleRepeatWorkout}
+              className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-medium flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Повторить
+            </button>
+            <button className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
+              <Share2 className="w-5 h-5 text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="w-12 h-12 rounded-full bg-accent flex items-center justify-center"
+            >
+              <Pencil className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </>
+        )}
+      </div>
 
       <ExercisePicker
         open={showExercisePicker}
