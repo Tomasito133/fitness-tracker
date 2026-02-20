@@ -270,8 +270,24 @@ export function Workouts() {
         open={showDatePicker}
         onOpenChange={setShowDatePicker}
         title="Выберите дату тренировки"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowDatePicker(false)}
+              className="px-4 py-2.5 rounded-lg hover:bg-accent transition-colors min-h-[44px]"
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleCreateWorkout}
+              className="px-4 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors min-h-[44px]"
+            >
+              Создать
+            </button>
+          </div>
+        }
       >
-        <div className="space-y-4">
+        <div className="space-y-4 pb-2">
           <p className="text-sm text-muted-foreground">
             Выберите дату для новой тренировки. Можно запланировать на будущее или внести прошлую тренировку.
           </p>
@@ -281,20 +297,6 @@ export function Workouts() {
             onChange={(e) => setNewWorkoutDate(e.target.value)}
             className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground text-lg"
           />
-          <div className="flex gap-3 justify-end">
-            <button
-              onClick={() => setShowDatePicker(false)}
-              className="px-4 py-2 rounded-lg hover:bg-accent transition-colors"
-            >
-              Отмена
-            </button>
-            <button
-              onClick={handleCreateWorkout}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Создать
-            </button>
-          </div>
         </div>
       </Dialog>
 

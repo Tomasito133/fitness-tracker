@@ -477,7 +477,7 @@ export function ActiveWorkout() {
   }
 
   return (
-    <div className="pb-40">
+    <div className="pb-[calc(10rem+env(safe-area-inset-bottom))]">
       {/* Header */}
       <div className="bg-gradient-to-b from-orange-500 to-red-500 -mx-4 -mt-4 px-4 pt-4 pb-6 rounded-b-3xl mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -582,7 +582,7 @@ export function ActiveWorkout() {
       )}
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border p-4 flex items-center justify-center gap-3 z-40">
+      <div className="fixed left-0 right-0 bg-background border-t border-border p-4 flex items-center justify-center gap-3 z-40 bottom-[calc(4rem+env(safe-area-inset-bottom))]">
         {isEditing && !workout.completedAt ? (
           <>
             <button

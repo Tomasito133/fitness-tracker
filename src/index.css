@@ -54,9 +54,21 @@
     @apply border-border;
   }
 
+  html {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: hidden;
+    min-height: 100dvh;
+  }
+
+  #root {
+    overflow-x: hidden;
+    min-height: 100dvh;
   }
 }
 

@@ -106,7 +106,7 @@ export function WeekCalendar({
         <button
           type="button"
           onClick={() => setShowMiniCalendar((v) => !v)}
-          className="text-lg font-semibold text-foreground hover:text-primary transition-colors capitalize"
+          className="text-lg font-semibold text-foreground hover:text-primary transition-colors capitalize py-2 px-3 min-h-[44px] flex items-center justify-center"
         >
           {monthYearLabel}
         </button>
@@ -115,13 +115,17 @@ export function WeekCalendar({
       {showMiniCalendar && (
         <div
           ref={miniCalRef}
-          className="absolute left-4 right-4 z-50 mt-1 p-3 bg-card border border-border rounded-xl shadow-lg"
+          className="absolute left-4 right-4 z-50 mt-1 p-3 bg-card border border-border rounded-xl shadow-lg max-h-[min(70dvh,360px)] overflow-auto"
+          style={{
+            left: 'max(1rem, env(safe-area-inset-left))',
+            right: 'max(1rem, env(safe-area-inset-right))',
+          }}
         >
           <div className="flex items-center justify-between mb-3">
             <button
               type="button"
               onClick={prevMonth}
-              className="p-1.5 rounded-full hover:bg-accent"
+              className="p-2 rounded-full hover:bg-accent min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               <ChevronLeft className="w-5 h-5 text-muted-foreground" />
             </button>
@@ -129,7 +133,7 @@ export function WeekCalendar({
             <button
               type="button"
               onClick={nextMonth}
-              className="p-1.5 rounded-full hover:bg-accent"
+              className="p-2 rounded-full hover:bg-accent min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </button>
@@ -176,7 +180,7 @@ export function WeekCalendar({
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={handlePrevWeek}
-          className="p-2 rounded-full hover:bg-accent transition-colors"
+          className="p-2 rounded-full hover:bg-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <ChevronLeft className="w-5 h-5 text-muted-foreground" />
         </button>
@@ -232,7 +236,7 @@ export function WeekCalendar({
 
         <button
           onClick={handleNextWeek}
-          className="p-2 rounded-full hover:bg-accent transition-colors"
+          className="p-2 rounded-full hover:bg-accent transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <ChevronRight className="w-5 h-5 text-muted-foreground" />
         </button>

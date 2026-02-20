@@ -287,7 +287,7 @@ export function ExerciseDetail() {
       </div>
 
       {/* Exercise Card */}
-      <div className="bg-card rounded-t-3xl -mt-4 pt-6 px-4 pb-32 min-h-[calc(100vh-120px)]">
+      <div className="bg-card rounded-t-3xl -mt-4 pt-6 px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] min-h-[calc(100vh-120px)]">
         <div className="flex items-center justify-between mb-2">
           <button 
             onClick={() => goBack()}
@@ -336,7 +336,7 @@ export function ExerciseDetail() {
         </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border p-4 flex items-center justify-between z-40">
+      <div className="fixed left-0 right-0 bg-background border-t border-border p-4 flex items-center justify-between z-40 bottom-[calc(4rem+env(safe-area-inset-bottom))]">
         <button
           onClick={() => goToExercise(currentExerciseIndex - 1)}
           disabled={currentExerciseIndex === 0}
