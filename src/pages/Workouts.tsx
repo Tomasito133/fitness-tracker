@@ -83,6 +83,15 @@ export function Workouts() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [workoutsWithStats, selectedDate]);
 
+  const isPastWeek = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const weekDates = getWeekDates(selectedDate);
+    const weekEnd = weekDates[6];
+    weekEnd.setHours(23, 59, 59, 999);
+    return weekEnd < today;
+  }, [selectedDate]);
+
   const handleStartWorkout = () => {
     setNewWorkoutDate(getTodayString());
     setShowDatePicker(true);
@@ -184,7 +193,7 @@ export function Workouts() {
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium"
             >
               <Plus className="w-4 h-4" />
-              Начать тренировку
+              {isPastWeek ? 'Внести прошедшую тренировку' : 'Начать тренировку'}
             </button>
           </CardContent>
         </Card>
