@@ -128,19 +128,6 @@ export function Workouts() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <button className="text-primary font-medium">
-          Шаблоны
-        </button>
-        <h1 className="text-xl font-bold">Дневник</h1>
-        <button
-          onClick={handleStartWorkout}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
-
       <WeekCalendar
         selectedDate={selectedDate}
         onDateChange={setSelectedDate}
@@ -178,6 +165,12 @@ export function Workouts() {
                 isHighlighted={workout.date === selectedDate.toISOString().split('T')[0]}
               />
             ))}
+            <button
+              onClick={handleStartWorkout}
+              className="w-full py-2.5 rounded-lg border border-dashed border-border text-muted-foreground hover:bg-accent hover:text-foreground transition-colors text-sm font-medium"
+            >
+              Добавить тренировку
+            </button>
           </div>
         </div>
       ) : (
