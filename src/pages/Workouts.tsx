@@ -93,7 +93,7 @@ export function Workouts() {
   }, [selectedDate]);
 
   const handleStartWorkout = () => {
-    setNewWorkoutDate(getTodayString());
+    setNewWorkoutDate(selectedDate.toISOString().split('T')[0]);
     setShowDatePicker(true);
   };
 
