@@ -8,7 +8,7 @@ interface SetInputProps {
   defaultWeight?: number;
   defaultReps?: number;
   isCompleted?: boolean;
-  onComplete: (weight: number, reps: number) => void;
+  onComplete?: (weight: number, reps: number) => void;
   onChange?: (weight: number, reps: number) => void;
   onDelete?: () => void;
   previousSet?: { weight: number; reps: number };
@@ -57,7 +57,7 @@ export function SetInput({
 
   const handleComplete = () => {
     if (reps > 0) {
-      onComplete(weight, reps);
+      onComplete?.(weight, reps);
       setIsEditing(false);
     }
   };

@@ -116,14 +116,8 @@ export function Supplements() {
           </p>
         </div>
         <Button onClick={() => { 
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/dc9b8520-5a0a-429d-a60a-22967b816805',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Supplements.tsx:118',message:'Add button clicked',data:{currentShowForm: showForm},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
           setEditingSupplement(undefined); 
           setShowForm(true); 
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/dc9b8520-5a0a-429d-a60a-22967b816805',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Supplements.tsx:122',message:'After setShowForm(true)',data:{},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
         }}>
           <Plus className="w-4 h-4 mr-2" />
           Добавить
@@ -332,9 +326,6 @@ export function Supplements() {
         </CardContent>
       </Card>
 
-      {/* #region agent log */}
-      {(() => { fetch('http://127.0.0.1:7242/ingest/dc9b8520-5a0a-429d-a60a-22967b816805',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Supplements.tsx:326',message:'Rendering SupplementForm',data:{showForm, editingSupplement: editingSupplement?.name || null},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{}); return null; })()}
-      {/* #endregion */}
       <SupplementForm
         open={showForm}
         onOpenChange={setShowForm}

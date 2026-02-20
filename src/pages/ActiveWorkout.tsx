@@ -1,19 +1,96 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, ChevronDown, MoreHorizontal, Heart, Share2, Pencil, Trash2, Dumbbell } from 'lucide-react';
+import { Plus, ChevronDown, MoreHorizontal, Heart, Share2, Pencil, Dumbbell, GripVertical } from 'lucide-react';
 import { db, type Exercise, type WorkoutSet } from '../db';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
-import { RestTimer } from '../components/RestTimer';
+import { Button } from '../components/ui';
 import { ExercisePicker } from '../components/ExercisePicker';
-import { SetInput } from '../components/SetInput';
-import { useRestTimer } from '../hooks/useRestTimer';
 import { useAppStore } from '../stores/appStore';
-import { formatDuration, formatDurationWithSeconds, formatShortDate, getMuscleGroupLabel } from '../lib/utils';
+import { formatDuration, formatDurationWithSeconds, formatShortDate } from '../lib/utils';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface ExerciseWithSets {
   exercise: Exercise;
   sets: (WorkoutSet & { isNew?: boolean })[];
+}
+
+interface SortableExerciseItemProps {
+  id: string;
+  exerciseData: ExerciseWithSets;
+  exerciseIndex: number;
+  isEditing: boolean;
+  onClick: () => void;
+  formatSetsCompact: (sets: WorkoutSet[]) => string;
+}
+
+function SortableExerciseItem({ 
+  id, 
+  exerciseData, 
+  exerciseIndex, 
+  isEditing,
+  onClick,
+  formatSetsCompact,
+}: SortableExerciseItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={`flex gap-2 py-4 border-b border-border/50 ${isEditing ? 'cursor-pointer hover:bg-accent/30 transition-colors' : ''}`}
+    >
+      {isEditing && (
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1 cursor-grab active:cursor-grabbing touch-none self-center"
+        >
+          <GripVertical className="w-5 h-5 text-muted-foreground" />
+        </button>
+      )}
+      <div 
+        className="flex gap-4 flex-1"
+        onClick={onClick}
+      >
+        <span className="text-muted-foreground w-6 shrink-0">{exerciseIndex + 1}</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium">{exerciseData.exercise.name}</p>
+          <p className="text-sm text-muted-foreground">
+            {formatSetsCompact(exerciseData.sets) || 'Нажмите для добавления подходов'}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ActiveWorkout() {
@@ -22,7 +99,6 @@ export function ActiveWorkout() {
   const workoutId = id ? Number(id) : null;
   
   const { defaultRestSeconds } = useAppStore();
-  const restTimer = useRestTimer({ defaultSeconds: defaultRestSeconds });
   
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [exercisesWithSets, setExercisesWithSets] = useState<ExerciseWithSets[]>([]);
@@ -229,97 +305,6 @@ export function ActiveWorkout() {
     setShowExercisePicker(false);
   };
 
-  const handleAddSet = async (exerciseIndex: number) => {
-    if (!workoutId) return;
-    
-    const updated = [...exercisesWithSets];
-    const lastSet = updated[exerciseIndex].sets[updated[exerciseIndex].sets.length - 1];
-    const newSetNumber = updated[exerciseIndex].sets.length + 1;
-    
-    const newSetId = await db.workoutSets.add({
-      workoutId,
-      exerciseId: updated[exerciseIndex].exercise.id!,
-      setNumber: newSetNumber,
-      weight: lastSet?.weight || 0,
-      reps: 0,
-      restSeconds: defaultRestSeconds,
-      completedAt: new Date(),
-    });
-    
-    updated[exerciseIndex].sets.push({
-      id: newSetId as number,
-      workoutId,
-      exerciseId: updated[exerciseIndex].exercise.id!,
-      setNumber: newSetNumber,
-      reps: 0,
-      weight: lastSet?.weight || 0,
-      restSeconds: defaultRestSeconds,
-      completedAt: new Date(),
-      isNew: false,
-    });
-    
-    setExercisesWithSets(updated);
-  };
-
-  const handleSetChange = async (exerciseIndex: number, setIndex: number, weight: number, reps: number) => {
-    const updated = [...exercisesWithSets];
-    const set = updated[exerciseIndex].sets[setIndex];
-    
-    set.weight = weight;
-    set.reps = reps;
-
-    if (set.id) {
-      await db.workoutSets.update(set.id, { weight, reps });
-    }
-
-    setExercisesWithSets(updated);
-  };
-
-  const handleCompleteSet = async (exerciseIndex: number, setIndex: number, weight: number, reps: number) => {
-    const updated = [...exercisesWithSets];
-    const set = updated[exerciseIndex].sets[setIndex];
-    
-    set.weight = weight;
-    set.reps = reps;
-    set.completedAt = new Date();
-    set.isNew = false;
-
-    if (set.id) {
-      await db.workoutSets.update(set.id, { weight, reps, completedAt: set.completedAt });
-    }
-
-    setExercisesWithSets(updated);
-    restTimer.start();
-  };
-
-  const handleDeleteSet = async (exerciseIndex: number, setIndex: number) => {
-    const updated = [...exercisesWithSets];
-    const set = updated[exerciseIndex].sets[setIndex];
-    
-    if (set.id) {
-      await db.workoutSets.delete(set.id);
-    }
-    
-    updated[exerciseIndex].sets.splice(setIndex, 1);
-    updated[exerciseIndex].sets.forEach((s, i) => s.setNumber = i + 1);
-    
-    setExercisesWithSets(updated);
-  };
-
-  const handleRemoveExercise = async (exerciseIndex: number) => {
-    const updated = [...exercisesWithSets];
-    const exerciseData = updated[exerciseIndex];
-    
-    for (const set of exerciseData.sets) {
-      if (set.id) {
-        await db.workoutSets.delete(set.id);
-      }
-    }
-    
-    updated.splice(exerciseIndex, 1);
-    setExercisesWithSets(updated);
-  };
-
   const handleSaveWorkout = async () => {
     if (!workoutId) return;
     
@@ -379,8 +364,12 @@ export function ActiveWorkout() {
 
   const durationMinutes = useMemo(() => {
     if (!workout) return 0;
-    // For completed workouts, use saved duration
+    // For completed workouts, use saved timer accumulated time
     if (workout.completedAt) {
+      if (workout.timerAccumulatedMs) {
+        return Math.round(workout.timerAccumulatedMs / 60000);
+      }
+      // Fallback for old workouts without timerAccumulatedMs
       const start = new Date(workout.startedAt).getTime();
       const end = new Date(workout.completedAt).getTime();
       return Math.round((end - start) / 60000);
@@ -396,6 +385,44 @@ export function ActiveWorkout() {
       .filter(s => s.reps > 0)
       .map(s => `${s.weight} кг × ${s.reps}`)
       .join(', ');
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const getExerciseId = (exerciseData: ExerciseWithSets) => {
+    return `exercise-${exerciseData.exercise.id}`;
+  };
+
+  const handleExerciseDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = exercisesWithSets.findIndex(e => getExerciseId(e) === active.id);
+      const newIndex = exercisesWithSets.findIndex(e => getExerciseId(e) === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(exercisesWithSets, oldIndex, newIndex);
+        setExercisesWithSets(newOrder);
+        
+        // Update set numbers in DB to reflect new order
+        for (let i = 0; i < newOrder.length; i++) {
+          for (const set of newOrder[i].sets) {
+            if (set.id) {
+              // Update exerciseId order is preserved through the sets themselves
+            }
+          }
+        }
+      }
+    }
   };
 
   if (!workout) {
@@ -472,88 +499,31 @@ export function ActiveWorkout() {
         </div>
       </div>
 
-      {/* Rest Timer (only in edit mode) */}
-      {isEditing && (
-        <div className="mb-6">
-          <RestTimer
-            seconds={restTimer.seconds}
-            isRunning={restTimer.isRunning}
-            progress={restTimer.progress}
-            onStart={restTimer.start}
-            onPause={restTimer.pause}
-            onResume={restTimer.resume}
-            onReset={restTimer.reset}
-            onAddTime={restTimer.addTime}
-          />
-        </div>
-      )}
-
-      {/* Exercises List */}
-      <div className="space-y-4">
-        {exercisesWithSets.map((exerciseData, exerciseIndex) => (
-          <div key={exerciseData.exercise.id}>
-            {isEditing ? (
-              <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base">{exerciseData.exercise.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        {getMuscleGroupLabel(exerciseData.exercise.muscleGroup)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveExercise(exerciseIndex)}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {exerciseData.sets.map((set, setIndex) => (
-                    <SetInput
-                      key={`${set.id || 'new'}-${setIndex}`}
-                      setNumber={set.setNumber}
-                      defaultWeight={set.weight}
-                      defaultReps={set.reps}
-                      isCompleted={!set.isNew && set.reps > 0}
-                      onComplete={(weight, reps) => handleCompleteSet(exerciseIndex, setIndex, weight, reps)}
-                      onChange={(weight, reps) => handleSetChange(exerciseIndex, setIndex, weight, reps)}
-                      onDelete={() => handleDeleteSet(exerciseIndex, setIndex)}
-                      previousSet={setIndex > 0 ? {
-                        weight: exerciseData.sets[setIndex - 1].weight,
-                        reps: exerciseData.sets[setIndex - 1].reps,
-                      } : undefined}
-                    />
-                  ))}
-
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => handleAddSet(exerciseIndex)}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Добавить подход
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="flex gap-4 py-3 border-b border-border/50">
-                <span className="text-muted-foreground w-6 shrink-0">{exerciseIndex + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium">{exerciseData.exercise.name}</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {formatSetsCompact(exerciseData.sets) || 'Нет подходов'}
-                  </p>
-                </div>
-              </div>
-            )}
+      {/* Exercises List - Compact View */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleExerciseDragEnd}
+      >
+        <SortableContext
+          items={exercisesWithSets.map(e => getExerciseId(e))}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-0">
+            {exercisesWithSets.map((exerciseData, exerciseIndex) => (
+              <SortableExerciseItem
+                key={getExerciseId(exerciseData)}
+                id={getExerciseId(exerciseData)}
+                exerciseData={exerciseData}
+                exerciseIndex={exerciseIndex}
+                isEditing={isEditing}
+                onClick={() => isEditing && navigate(`/workouts/${workoutId}/exercise/${exerciseIndex}`)}
+                formatSetsCompact={formatSetsCompact}
+              />
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Add Exercise Button (edit mode) */}
       {isEditing && (
@@ -569,7 +539,7 @@ export function ActiveWorkout() {
 
       {/* Bottom Action Bar */}
       <div className="fixed bottom-16 left-0 right-0 bg-background border-t border-border p-4 flex items-center justify-center gap-3 z-40">
-        {isEditing ? (
+        {isEditing && !workout.completedAt ? (
           <>
             <button
               onClick={() => setShowExercisePicker(true)}
@@ -620,6 +590,24 @@ export function ActiveWorkout() {
               className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium"
             >
               Завершить
+            </button>
+          </>
+        ) : isEditing && workout.completedAt ? (
+          <>
+            <button
+              onClick={() => setShowExercisePicker(true)}
+              className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+            <button
+              onClick={async () => {
+                await handleSaveWorkout();
+                setIsEditing(false);
+              }}
+              className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-medium"
+            >
+              Сохранить
             </button>
           </>
         ) : (

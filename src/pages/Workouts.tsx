@@ -37,6 +37,8 @@ export function Workouts() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [newWorkoutDate, setNewWorkoutDate] = useState(getTodayString());
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -111,15 +113,21 @@ export function Workouts() {
     return groupByWeek(workoutsWithStats);
   }, [workoutsWithStats]);
 
-  const handleStartWorkout = async () => {
-    const today = getTodayString();
+  const handleStartWorkout = () => {
+    setNewWorkoutDate(getTodayString());
+    setShowDatePicker(true);
+  };
+
+  const handleCreateWorkout = async () => {
     const maxSortOrder = workouts?.reduce((max, w) => Math.max(max, w.sortOrder || 0), 0) || 0;
+    const workoutDate = new Date(newWorkoutDate);
     const workoutId = await db.workouts.add({
       name: 'Тренировка',
-      date: today,
-      startedAt: new Date(),
+      date: newWorkoutDate,
+      startedAt: workoutDate,
       sortOrder: maxSortOrder + 1,
     });
+    setShowDatePicker(false);
     navigate(`/workouts/${workoutId}`);
   };
 
@@ -253,6 +261,38 @@ export function Workouts() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog
+        open={showDatePicker}
+        onOpenChange={setShowDatePicker}
+        title="Выберите дату тренировки"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Выберите дату для новой тренировки. Можно запланировать на будущее или внести прошлую тренировку.
+          </p>
+          <input
+            type="date"
+            value={newWorkoutDate}
+            onChange={(e) => setNewWorkoutDate(e.target.value)}
+            className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground text-lg"
+          />
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowDatePicker(false)}
+              className="px-4 py-2 rounded-lg hover:bg-accent transition-colors"
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleCreateWorkout}
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Создать
+            </button>
+          </div>
+        </div>
+      </Dialog>
 
       <Dialog
         open={!!deleteConfirm}
