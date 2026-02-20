@@ -215,6 +215,16 @@ export function Workouts() {
                     текущую неделю
                   </button>
                 </>
+              ) : isFutureWeek ? (
+                <>
+                  Запланируйте тренировку или переключитесь на{' '}
+                  <button
+                    onClick={() => setSelectedDate(new Date())}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    текущую неделю
+                  </button>
+                </>
               ) : (
                 'Запланируйте тренировку или переключитесь на другую неделю'
               )}
