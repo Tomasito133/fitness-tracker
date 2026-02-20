@@ -224,7 +224,7 @@ export function Workouts() {
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium"
             >
               <Plus className="w-4 h-4" />
-              {isPastWeek ? 'Внести прошедшую тренировку' : isFutureWeek ? 'Запланируйте тренировку' : 'Начать тренировку'}
+              {isPastWeek ? 'Внести прошедшую тренировку' : isFutureWeek ? 'Запланировать тренировку' : 'Начать тренировку'}
             </button>
           </CardContent>
         </Card>
