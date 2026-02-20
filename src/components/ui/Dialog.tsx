@@ -13,18 +13,11 @@ interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: ReactNode;
+  title?: string;
 }
 
-export function Dialog({ open, onOpenChange, children }: DialogProps) {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/dc9b8520-5a0a-429d-a60a-22967b816805',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Dialog.tsx:18',message:'Dialog render',data:{open},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
-
+export function Dialog({ open, onOpenChange, children, title }: DialogProps) {
   if (!open) return null;
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/dc9b8520-5a0a-429d-a60a-22967b816805',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Dialog.tsx:23',message:'Dialog is OPEN, rendering content',data:{open},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
 
   return (
     <DialogContext.Provider value={{ open, onClose: () => onOpenChange(false) }}>
@@ -33,7 +26,22 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
           className="fixed inset-0 bg-black/50 backdrop-blur-sm"
           onClick={() => onOpenChange(false)}
         />
-        {children}
+        <div
+          className="relative z-50 w-full max-w-lg max-h-[90vh] overflow-auto rounded-t-2xl sm:rounded-2xl bg-background p-6 shadow-xl animate-in fade-in-0 slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => onOpenChange(false)}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close</span>
+          </button>
+          {title && (
+            <h2 className="text-lg font-semibold leading-none tracking-tight mb-4">{title}</h2>
+          )}
+          {children}
+        </div>
       </div>
     </DialogContext.Provider>
   );

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Clock, Weight, Heart, Flame, MoreHorizontal, Pencil } from 'lucide-react';
+import { Clock, Weight, Heart, Flame, GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { getDayOfWeekName, formatDuration, cn } from '../lib/utils';
 
 interface WorkoutCardProps {
@@ -11,8 +11,10 @@ interface WorkoutCardProps {
   calories?: number;
   accentColor?: string;
   onClick?: () => void;
-  onMenuClick?: () => void;
   onNameChange?: (newName: string) => void;
+  onDelete?: () => void;
+  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  isDragging?: boolean;
 }
 
 export function WorkoutCard({
@@ -24,14 +26,17 @@ export function WorkoutCard({
   calories,
   accentColor = 'bg-primary',
   onClick,
-  onMenuClick,
   onNameChange,
+  onDelete,
+  dragHandleProps,
+  isDragging,
 }: WorkoutCardProps) {
   const dayName = getDayOfWeekName(date);
   const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
   
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(name);
+  const [showActions, setShowActions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -68,14 +73,37 @@ export function WorkoutCard({
     setIsEditing(true);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete();
+    }
+  };
+
   return (
     <div
       className={cn(
-        'relative flex bg-card rounded-xl overflow-hidden',
-        onClick && !isEditing && 'cursor-pointer hover:bg-accent/50 transition-colors'
+        'relative flex bg-card rounded-xl overflow-hidden transition-all',
+        onClick && !isEditing && 'cursor-pointer hover:bg-accent/50',
+        isDragging && 'opacity-50 shadow-lg scale-[1.02]'
       )}
       onClick={isEditing ? undefined : onClick}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
+      {dragHandleProps && (
+        <button
+          {...dragHandleProps}
+          className={cn(
+            'flex items-center justify-center w-8 shrink-0 cursor-grab active:cursor-grabbing transition-opacity touch-none',
+            showActions || isDragging ? 'opacity-100' : 'opacity-0'
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
+        </button>
+      )}
+      
       <div className={cn('w-1 shrink-0', accentColor)} />
       
       <div className="flex-1 p-4">
@@ -109,15 +137,15 @@ export function WorkoutCard({
             )}
           </div>
           
-          {onMenuClick && (
+          {onDelete && (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMenuClick();
-              }}
-              className="p-1 rounded-full hover:bg-accent transition-colors -mr-1 -mt-1 shrink-0"
+              onClick={handleDeleteClick}
+              className={cn(
+                'p-1.5 rounded-full hover:bg-destructive/10 transition-all shrink-0 -mr-1 -mt-1',
+                showActions ? 'opacity-100' : 'opacity-0'
+              )}
             >
-              <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+              <Trash2 className="w-4 h-4 text-destructive" />
             </button>
           )}
         </div>

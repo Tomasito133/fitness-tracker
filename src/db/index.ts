@@ -18,6 +18,7 @@ export interface Workout {
   startedAt: Date;
   completedAt?: Date;
   notes?: string;
+  sortOrder?: number;
 }
 
 export interface WorkoutSet {
@@ -136,6 +137,19 @@ export class FitnessDB extends Dexie {
     this.version(1).stores({
       exercises: '++id, name, muscleGroup, type, isCustom',
       workouts: '++id, date, startedAt',
+      workoutSets: '++id, workoutId, exerciseId, completedAt',
+      foods: '++id, barcode, name, isCustom',
+      mealEntries: '++id, date, mealType, foodId',
+      waterEntries: '++id, date',
+      nutritionGoals: '++id',
+      supplements: '++id, name, isActive',
+      supplementIntakes: '++id, supplementId, date, scheduledTime',
+      bodyMeasurements: '++id, date, type',
+    });
+
+    this.version(2).stores({
+      exercises: '++id, name, muscleGroup, type, isCustom',
+      workouts: '++id, date, startedAt, sortOrder',
       workoutSets: '++id, workoutId, exerciseId, completedAt',
       foods: '++id, barcode, name, isCustom',
       mealEntries: '++id, date, mealType, foodId',
