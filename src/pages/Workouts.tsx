@@ -37,6 +37,7 @@ export function Workouts() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
+  const [, setTick] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -59,6 +60,18 @@ export function Workouts() {
 
   const allSets = useLiveQuery(() => db.workoutSets.toArray());
 
+  // Update timer display every minute for active workouts
+  useEffect(() => {
+    const hasActiveWorkout = workouts?.some(w => w.timerRunning && !w.completedAt);
+    if (!hasActiveWorkout) return;
+    
+    const interval = setInterval(() => {
+      setTick(t => t + 1);
+    }, 60000);
+    
+    return () => clearInterval(interval);
+  }, [workouts]);
+
   const workoutDates = useMemo(() => {
     return workouts?.map(w => w.date) || [];
   }, [workouts]);
@@ -79,9 +92,18 @@ export function Workouts() {
       
       let durationMinutes = 0;
       if (workout.completedAt && workout.startedAt) {
+        // Completed workout - use actual duration
         const start = new Date(workout.startedAt).getTime();
         const end = new Date(workout.completedAt).getTime();
         durationMinutes = Math.round((end - start) / 60000);
+      } else if (workout.timerRunning && workout.timerLastStartedAt) {
+        // Active running workout - calculate current duration
+        const accumulated = workout.timerAccumulatedMs || 0;
+        const elapsed = Date.now() - new Date(workout.timerLastStartedAt).getTime();
+        durationMinutes = Math.round((accumulated + elapsed) / 60000);
+      } else if (workout.timerAccumulatedMs) {
+        // Paused workout - show accumulated time
+        durationMinutes = Math.round(workout.timerAccumulatedMs / 60000);
       }
 
       return {
