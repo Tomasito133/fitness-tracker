@@ -37,6 +37,12 @@ export function Workouts() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
+  const [activeWorkoutWarning, setActiveWorkoutWarning] = useState<{ id: number; name: string } | null>(null);
+
+  // Find active (unfinished) workout
+  const activeWorkout = useLiveQuery(
+    () => db.workouts.filter(w => !w.completedAt).first()
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -98,6 +104,16 @@ export function Workouts() {
   }, [workoutsWithStats]);
 
   const handleStartWorkout = async () => {
+    // Check if there's an active workout
+    if (activeWorkout) {
+      setActiveWorkoutWarning({ id: activeWorkout.id!, name: activeWorkout.name });
+      return;
+    }
+    
+    await createNewWorkout();
+  };
+
+  const createNewWorkout = async () => {
     const today = getTodayString();
     const maxSortOrder = workouts?.reduce((max, w) => Math.max(max, w.sortOrder || 0), 0) || 0;
     const workoutId = await db.workouts.add({
@@ -107,6 +123,21 @@ export function Workouts() {
       sortOrder: maxSortOrder + 1,
     });
     navigate(`/workouts/${workoutId}`);
+  };
+
+  const handleFinishActiveAndStartNew = async () => {
+    if (activeWorkout?.id) {
+      await db.workouts.update(activeWorkout.id, { completedAt: new Date() });
+    }
+    setActiveWorkoutWarning(null);
+    await createNewWorkout();
+  };
+
+  const handleGoToActiveWorkout = () => {
+    if (activeWorkout?.id) {
+      navigate(`/workouts/${activeWorkout.id}`);
+    }
+    setActiveWorkoutWarning(null);
   };
 
   const handleNameChange = async (workoutId: number, newName: string) => {
@@ -258,6 +289,39 @@ export function Workouts() {
               className="px-4 py-2 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
             >
               Удалить
+            </button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={!!activeWorkoutWarning}
+        onOpenChange={(open) => !open && setActiveWorkoutWarning(null)}
+        title="Есть незавершённая тренировка"
+      >
+        <div className="space-y-4">
+          <p className="text-muted-foreground">
+            У вас есть активная тренировка "{activeWorkoutWarning?.name}". 
+            Что вы хотите сделать?
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleGoToActiveWorkout}
+              className="w-full px-4 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+            >
+              Продолжить текущую
+            </button>
+            <button
+              onClick={handleFinishActiveAndStartNew}
+              className="w-full px-4 py-3 rounded-lg bg-accent text-foreground hover:bg-accent/80 transition-colors"
+            >
+              Завершить и начать новую
+            </button>
+            <button
+              onClick={() => setActiveWorkoutWarning(null)}
+              className="w-full px-4 py-2 rounded-lg hover:bg-accent/50 transition-colors text-muted-foreground"
+            >
+              Отмена
             </button>
           </div>
         </div>
