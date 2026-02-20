@@ -90,6 +90,21 @@ export function getWeekDates(date: Date): Date[] {
   return dates;
 }
 
+/** Returns 42 dates (6 weeks) for a month grid starting from Monday of the week that contains the 1st */
+export function getMonthGridDates(year: number, month: number): Date[] {
+  const first = new Date(year, month, 1);
+  const day = first.getDay(); // 0 Sun .. 6 Sat
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const start = new Date(year, month, 1 + mondayOffset);
+  const dates: Date[] = [];
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    dates.push(d);
+  }
+  return dates;
+}
+
 export function getDayOfWeekName(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleDateString('ru-RU', { weekday: 'long' });
