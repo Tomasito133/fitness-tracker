@@ -36,6 +36,7 @@ export function ActiveWorkout() {
   const [accumulatedTimeMs, setAccumulatedTimeMs] = useState(0);
   const [lastStartTime, setLastStartTime] = useState<Date | null>(null);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
+  const [timerRestored, setTimerRestored] = useState(false);
 
   const workout = useLiveQuery(
     () => workoutId ? db.workouts.get(workoutId) : undefined,
@@ -54,6 +55,29 @@ export function ActiveWorkout() {
       setIsEditing(!workout.completedAt);
     }
   }, [workout]);
+
+  // Restore timer state from DB
+  useEffect(() => {
+    if (workout && !timerRestored && !workout.completedAt) {
+      if (workout.timerRunning && workout.timerLastStartedAt) {
+        // Timer was running - calculate elapsed time since last start
+        const lastStart = new Date(workout.timerLastStartedAt);
+        const elapsed = Date.now() - lastStart.getTime();
+        const totalAccumulated = (workout.timerAccumulatedMs || 0) + elapsed;
+        
+        setAccumulatedTimeMs(workout.timerAccumulatedMs || 0);
+        setLastStartTime(lastStart);
+        setCurrentTimeMs(totalAccumulated);
+        setIsWorkoutRunning(true);
+      } else if (workout.timerAccumulatedMs && workout.timerAccumulatedMs > 0) {
+        // Timer was paused - restore accumulated time
+        setAccumulatedTimeMs(workout.timerAccumulatedMs);
+        setCurrentTimeMs(workout.timerAccumulatedMs);
+        setIsWorkoutRunning(false);
+      }
+      setTimerRestored(true);
+    }
+  }, [workout, timerRestored]);
 
   useEffect(() => {
     if (workout?.name) {
@@ -81,24 +105,55 @@ export function ActiveWorkout() {
     return () => clearInterval(interval);
   }, [isWorkoutRunning, lastStartTime, accumulatedTimeMs]);
 
-  const handleStartWorkout = () => {
-    setLastStartTime(new Date());
+  const handleStartWorkout = async () => {
+    const now = new Date();
+    setLastStartTime(now);
     setIsWorkoutRunning(true);
+    
+    // Save to DB
+    if (workoutId) {
+      await db.workouts.update(workoutId, {
+        timerRunning: true,
+        timerLastStartedAt: now,
+        timerAccumulatedMs: accumulatedTimeMs,
+      });
+    }
   };
 
-  const handlePauseWorkout = () => {
+  const handlePauseWorkout = async () => {
+    let newAccumulated = accumulatedTimeMs;
     if (lastStartTime) {
       const elapsed = Date.now() - lastStartTime.getTime();
-      setAccumulatedTimeMs(prev => prev + elapsed);
-      setCurrentTimeMs(accumulatedTimeMs + elapsed);
+      newAccumulated = accumulatedTimeMs + elapsed;
+      setAccumulatedTimeMs(newAccumulated);
+      setCurrentTimeMs(newAccumulated);
     }
     setIsWorkoutRunning(false);
     setLastStartTime(null);
+    
+    // Save to DB
+    if (workoutId) {
+      await db.workouts.update(workoutId, {
+        timerRunning: false,
+        timerLastStartedAt: undefined,
+        timerAccumulatedMs: newAccumulated,
+      });
+    }
   };
 
-  const handleResumeWorkout = () => {
-    setLastStartTime(new Date());
+  const handleResumeWorkout = async () => {
+    const now = new Date();
+    setLastStartTime(now);
     setIsWorkoutRunning(true);
+    
+    // Save to DB
+    if (workoutId) {
+      await db.workouts.update(workoutId, {
+        timerRunning: true,
+        timerLastStartedAt: now,
+        timerAccumulatedMs: accumulatedTimeMs,
+      });
+    }
   };
 
   const handleSaveName = async () => {

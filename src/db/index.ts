@@ -19,6 +19,10 @@ export interface Workout {
   completedAt?: Date;
   notes?: string;
   sortOrder?: number;
+  // Timer state persistence
+  timerRunning?: boolean;
+  timerAccumulatedMs?: number;
+  timerLastStartedAt?: Date;
 }
 
 export interface WorkoutSet {
