@@ -189,11 +189,35 @@ export function ActiveWorkout() {
     setExercisesWithSets(updated);
   };
 
+  const handleSaveWorkout = async () => {
+    if (!workoutId) return;
+    
+    for (const exerciseData of exercisesWithSets) {
+      for (const set of exerciseData.sets) {
+        if (!set.id && set.weight > 0 && set.reps > 0) {
+          const newId = await db.workoutSets.add({
+            workoutId,
+            exerciseId: set.exerciseId,
+            setNumber: set.setNumber,
+            weight: set.weight,
+            reps: set.reps,
+            restSeconds: set.restSeconds,
+            completedAt: set.completedAt,
+          });
+          set.id = newId as number;
+          set.isNew = false;
+        }
+      }
+    }
+    
+    setIsEditing(false);
+  };
+
   const handleFinishWorkout = async () => {
+    await handleSaveWorkout();
     if (workoutId) {
       await db.workouts.update(workoutId, { completedAt: new Date() });
     }
-    setIsEditing(false);
   };
 
   const handleRepeatWorkout = async () => {
@@ -409,7 +433,7 @@ export function ActiveWorkout() {
       )}
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 flex items-center justify-center gap-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4 flex items-center justify-center gap-3">
         {isEditing ? (
           <>
             <button
@@ -419,8 +443,14 @@ export function ActiveWorkout() {
               <Plus className="w-6 h-6" />
             </button>
             <button
+              onClick={handleSaveWorkout}
+              className="px-6 py-3 rounded-full bg-accent text-foreground font-medium"
+            >
+              Сохранить
+            </button>
+            <button
               onClick={handleFinishWorkout}
-              className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-medium"
+              className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium"
             >
               Завершить
             </button>
