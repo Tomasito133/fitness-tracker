@@ -350,16 +350,24 @@ export function ActiveWorkout() {
 
   const handleFinishWorkout = async () => {
     // Stop timer if running
+    let finalAccumulatedMs = accumulatedTimeMs;
     if (isWorkoutRunning && lastStartTime) {
       const elapsed = Date.now() - lastStartTime.getTime();
-      setAccumulatedTimeMs(prev => prev + elapsed);
+      finalAccumulatedMs = accumulatedTimeMs + elapsed;
+      setAccumulatedTimeMs(finalAccumulatedMs);
       setIsWorkoutRunning(false);
       setLastStartTime(null);
     }
     
     await handleSaveWorkout();
     if (workoutId) {
-      await db.workouts.update(workoutId, { completedAt: new Date() });
+      // Save final timer accumulated time along with completedAt
+      await db.workouts.update(workoutId, { 
+        completedAt: new Date(),
+        timerAccumulatedMs: finalAccumulatedMs,
+        timerRunning: false,
+        timerLastStartedAt: undefined,
+      });
     }
     setIsEditing(false);
   };

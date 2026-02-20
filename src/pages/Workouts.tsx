@@ -78,11 +78,16 @@ export function Workouts() {
       const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
       
       let durationMinutes = 0;
-      if (workout.completedAt && workout.startedAt) {
-        // Completed workout - use actual duration
-        const start = new Date(workout.startedAt).getTime();
-        const end = new Date(workout.completedAt).getTime();
-        durationMinutes = Math.round((end - start) / 60000);
+      if (workout.completedAt) {
+        // Completed workout - use saved timer accumulated time if available
+        if (workout.timerAccumulatedMs) {
+          durationMinutes = Math.round(workout.timerAccumulatedMs / 60000);
+        } else if (workout.startedAt) {
+          // Fallback for old workouts without timerAccumulatedMs
+          const start = new Date(workout.startedAt).getTime();
+          const end = new Date(workout.completedAt).getTime();
+          durationMinutes = Math.round((end - start) / 60000);
+        }
       } else if (workout.timerRunning && workout.timerLastStartedAt) {
         // Active running workout - calculate current duration
         const accumulated = workout.timerAccumulatedMs || 0;
