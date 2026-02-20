@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, ChevronDown, MoreHorizontal, Heart, Share2, Pencil, RefreshCw, Trash2, Dumbbell } from 'lucide-react';
+import { Plus, ChevronDown, MoreHorizontal, Heart, Share2, Pencil, Trash2, Dumbbell } from 'lucide-react';
 import { db, type Exercise, type WorkoutSet } from '../db';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { RestTimer } from '../components/RestTimer';
@@ -270,33 +270,6 @@ export function ActiveWorkout() {
     setIsEditing(false);
   };
 
-  const handleRepeatWorkout = async () => {
-    if (!workout || !workoutId) return;
-    
-    const today = new Date().toISOString().split('T')[0];
-    const newWorkoutId = await db.workouts.add({
-      name: workout.name,
-      date: today,
-      startedAt: new Date(),
-    });
-
-    for (const exerciseData of exercisesWithSets) {
-      for (const set of exerciseData.sets) {
-        await db.workoutSets.add({
-          workoutId: newWorkoutId as number,
-          exerciseId: set.exerciseId,
-          setNumber: set.setNumber,
-          weight: set.weight,
-          reps: 0,
-          restSeconds: set.restSeconds,
-          completedAt: new Date(),
-        });
-      }
-    }
-
-    navigate(`/workouts/${newWorkoutId}`);
-  };
-
   const totalVolume = exercisesWithSets.reduce(
     (sum, e) => sum + e.sets.filter(s => !s.isNew).reduce((s, set) => s + set.weight * set.reps, 0),
     0
@@ -534,27 +507,15 @@ export function ActiveWorkout() {
           </>
         ) : (
           <>
-            <button
-              onClick={() => setShowExercisePicker(true)}
-              className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center"
-            >
-              <Plus className="w-6 h-6" />
-            </button>
-            <button
-              onClick={handleRepeatWorkout}
-              className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-medium flex items-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Повторить
-            </button>
             <button className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
               <Share2 className="w-5 h-5 text-muted-foreground" />
             </button>
             <button
               onClick={() => setIsEditing(true)}
-              className="w-12 h-12 rounded-full bg-accent flex items-center justify-center"
+              className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-medium flex items-center gap-2"
             >
-              <Pencil className="w-5 h-5 text-muted-foreground" />
+              <Pencil className="w-4 h-4" />
+              Редактировать
             </button>
           </>
         )}
