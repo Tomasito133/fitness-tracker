@@ -5,7 +5,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input, Dialog, Dialog
 import { MeasurementForm } from '../components/MeasurementForm';
 import { ProgressChart } from '../components/ProgressChart';
 import { db, type MeasurementType } from '../db';
-import { getMeasurementLabel, formatShortDate, cn } from '../lib/utils';
+import { getMeasurementLabel, formatShortDate } from '../lib/utils';
 
 const measurementTypes: { type: MeasurementType; unit: string; color: string }[] = [
   { type: 'weight', unit: 'кг', color: '#3b82f6' },

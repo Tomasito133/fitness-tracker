@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, Pill, Check, X, Bell, Clock, Package, Edit2, Trash2, BellOff } from 'lucide-react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from '../components/ui';
 import { SupplementForm } from '../components/SupplementForm';
-import { db, type Supplement, type SupplementIntake } from '../db';
+import { db, type Supplement } from '../db';
 import { getTodayString, cn } from '../lib/utils';
 
 export function Supplements() {

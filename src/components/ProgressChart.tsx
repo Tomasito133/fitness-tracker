@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { type BodyMeasurement, type MeasurementType } from '../db';
-import { getMeasurementLabel } from '../lib/utils';
 
 interface ProgressChartProps {
   measurements: BodyMeasurement[];
