@@ -186,7 +186,19 @@ export function Workouts() {
             <Dumbbell className="w-12 h-12 text-muted-foreground mb-4" />
             <h3 className="font-semibold text-lg mb-1">Нет тренировок на этой неделе</h3>
             <p className="text-muted-foreground text-center mb-4">
-              Запланируйте тренировку или переключитесь на другую неделю
+              {isPastWeek ? (
+                <>
+                  Внесите прошедшую тренировку или переключитесь на{' '}
+                  <button
+                    onClick={() => setSelectedDate(new Date())}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    текущую неделю
+                  </button>
+                </>
+              ) : (
+                'Запланируйте тренировку или переключитесь на другую неделю'
+              )}
             </p>
             <button
               onClick={handleStartWorkout}
