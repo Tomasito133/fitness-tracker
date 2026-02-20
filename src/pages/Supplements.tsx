@@ -19,7 +19,7 @@ export function Supplements() {
   }, []);
 
   const supplements = useLiveQuery(() =>
-    db.supplements.where('isActive').equals(1).toArray()
+    db.supplements.filter(s => s.isActive === true).toArray()
   );
 
   const todayIntakes = useLiveQuery(

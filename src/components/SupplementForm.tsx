@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, X, Clock } from 'lucide-react';
 import { Button, Input, Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui';
 import { db, type Supplement } from '../db';
@@ -11,14 +11,38 @@ interface SupplementFormProps {
 }
 
 export function SupplementForm({ open, onOpenChange, supplement, onSuccess }: SupplementFormProps) {
-  const [name, setName] = useState(supplement?.name || '');
-  const [dosage, setDosage] = useState(supplement?.dosage || '');
-  const [dosageUnit, setDosageUnit] = useState(supplement?.dosageUnit || 'мг');
-  const [reminderTimes, setReminderTimes] = useState<string[]>(supplement?.reminderTimes || ['08:00']);
-  const [withFood, setWithFood] = useState(supplement?.withFood || false);
-  const [stock, setStock] = useState(supplement?.stock || 0);
-  const [stockUnit, setStockUnit] = useState(supplement?.stockUnit || 'шт');
-  const [notes, setNotes] = useState(supplement?.notes || '');
+  const [name, setName] = useState('');
+  const [dosage, setDosage] = useState('');
+  const [dosageUnit, setDosageUnit] = useState('мг');
+  const [reminderTimes, setReminderTimes] = useState<string[]>(['08:00']);
+  const [withFood, setWithFood] = useState(false);
+  const [stock, setStock] = useState(0);
+  const [stockUnit, setStockUnit] = useState('шт');
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      if (supplement) {
+        setName(supplement.name || '');
+        setDosage(supplement.dosage || '');
+        setDosageUnit(supplement.dosageUnit || 'мг');
+        setReminderTimes(supplement.reminderTimes || ['08:00']);
+        setWithFood(supplement.withFood || false);
+        setStock(supplement.stock || 0);
+        setStockUnit(supplement.stockUnit || 'шт');
+        setNotes(supplement.notes || '');
+      } else {
+        setName('');
+        setDosage('');
+        setDosageUnit('мг');
+        setReminderTimes(['08:00']);
+        setWithFood(false);
+        setStock(0);
+        setStockUnit('шт');
+        setNotes('');
+      }
+    }
+  }, [open, supplement]);
 
   const handleAddTime = () => {
     setReminderTimes([...reminderTimes, '12:00']);
