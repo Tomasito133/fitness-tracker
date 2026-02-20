@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Clock, Weight, Heart, Flame, GripVertical, Pencil, Trash2 } from 'lucide-react';
+import { Clock, Weight, Heart, Flame, Pencil, Trash2 } from 'lucide-react';
 import { getDayOfWeekName, formatDuration, formatDurationWithSeconds, cn } from '../lib/utils';
 
 interface WorkoutCardProps {
@@ -9,12 +9,9 @@ interface WorkoutCardProps {
   totalVolume: number;
   heartRate?: number;
   calories?: number;
-  accentColor?: string;
   onClick?: () => void;
   onNameChange?: (newName: string) => void;
   onDelete?: () => void;
-  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
-  isDragging?: boolean;
   // Timer state for active workouts
   timerRunning?: boolean;
   timerAccumulatedMs?: number;
@@ -29,12 +26,9 @@ export function WorkoutCard({
   totalVolume,
   heartRate,
   calories,
-  accentColor = 'bg-primary',
   onClick,
   onNameChange,
   onDelete,
-  dragHandleProps,
-  isDragging,
   timerRunning,
   timerAccumulatedMs,
   timerLastStartedAt,
@@ -115,28 +109,12 @@ export function WorkoutCard({
     <div
       className={cn(
         'relative flex bg-card rounded-xl overflow-hidden transition-all',
-        onClick && !isEditing && 'cursor-pointer hover:bg-accent/50',
-        isDragging && 'opacity-50 shadow-lg scale-[1.02]'
+        onClick && !isEditing && 'cursor-pointer hover:bg-accent/50'
       )}
       onClick={isEditing ? undefined : onClick}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
-      {dragHandleProps && (
-        <button
-          {...dragHandleProps}
-          className={cn(
-            'flex items-center justify-center w-8 shrink-0 cursor-grab active:cursor-grabbing transition-opacity touch-none',
-            showActions || isDragging ? 'opacity-100' : 'opacity-0'
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical className="w-4 h-4 text-muted-foreground" />
-        </button>
-      )}
-      
-      <div className={cn('w-1 shrink-0', accentColor)} />
-      
       <div className="flex-1 p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">

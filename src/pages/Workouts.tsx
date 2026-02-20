@@ -2,36 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Dumbbell, Trophy, MoreHorizontal } from 'lucide-react';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
 import { Card, CardContent } from '../components/ui';
 import { WeekCalendar } from '../components/WeekCalendar';
-import { SortableWorkoutCard } from '../components/SortableWorkoutCard';
+import { WorkoutCard } from '../components/WorkoutCard';
 import { db, seedExercises } from '../db';
 import { groupByWeek, getTodayString } from '../lib/utils';
 import { Dialog } from '../components/ui/Dialog';
-
-const ACCENT_COLORS = [
-  'bg-red-500',
-  'bg-blue-500',
-  'bg-green-500',
-  'bg-purple-500',
-  'bg-orange-500',
-  'bg-pink-500',
-  'bg-teal-500',
-];
 
 export function Workouts() {
   const navigate = useNavigate();
@@ -39,17 +15,6 @@ export function Workouts() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [newWorkoutDate, setNewWorkoutDate] = useState(getTodayString());
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   useEffect(() => {
     seedExercises();
@@ -75,7 +40,7 @@ export function Workouts() {
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
     
-    return sorted.map((workout, index) => {
+    return sorted.map((workout) => {
       const sets = allSets.filter(s => s.workoutId === workout.id);
       const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
       
@@ -104,7 +69,6 @@ export function Workouts() {
         ...workout,
         totalVolume,
         durationMinutes,
-        accentColor: ACCENT_COLORS[index % ACCENT_COLORS.length],
       };
     });
   }, [workouts, allSets]);
@@ -147,27 +111,6 @@ export function Workouts() {
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const oldIndex = workoutsWithStats.findIndex(w => w.id === active.id);
-      const newIndex = workoutsWithStats.findIndex(w => w.id === over.id);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const reordered = [...workoutsWithStats];
-        const [moved] = reordered.splice(oldIndex, 1);
-        reordered.splice(newIndex, 0, moved);
-
-        await db.transaction('rw', db.workouts, async () => {
-          for (let i = 0; i < reordered.length; i++) {
-            await db.workouts.update(reordered[i].id!, { sortOrder: i });
-          }
-        });
-      }
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -190,59 +133,46 @@ export function Workouts() {
       />
 
       {weekGroups.length > 0 ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="space-y-6">
-            {weekGroups.map((group) => (
-              <div key={group.weekKey} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-amber-500" />
-                    <span className="font-medium">{group.dateRange}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground">
-                      {group.items.length} {group.items.length === 1 ? 'тренировка' : 
-                        group.items.length < 5 ? 'тренировки' : 'тренировок'}
-                    </span>
-                    <button className="p-1 rounded-full hover:bg-accent transition-colors">
-                      <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
-                    </button>
-                  </div>
+        <div className="space-y-6">
+          {weekGroups.map((group) => (
+            <div key={group.weekKey} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-amber-500" />
+                  <span className="font-medium">{group.dateRange}</span>
                 </div>
-
-                <SortableContext
-                  items={group.items.map(w => w.id!)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-2">
-                    {group.items.map((workout) => (
-                      <SortableWorkoutCard
-                        key={workout.id}
-                        id={workout.id!}
-                        date={workout.date}
-                        name={workout.name}
-                        durationMinutes={workout.durationMinutes}
-                        totalVolume={workout.totalVolume}
-                        accentColor={workout.accentColor}
-                        onClick={() => navigate(`/workouts/${workout.id}`)}
-                        onNameChange={(newName) => handleNameChange(workout.id!, newName)}
-                        onDelete={() => handleDeleteClick(workout.id!, workout.name)}
-                        timerRunning={workout.timerRunning}
-                        timerAccumulatedMs={workout.timerAccumulatedMs}
-                        timerLastStartedAt={workout.timerLastStartedAt}
-                        isCompleted={!!workout.completedAt}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground">
+                    {group.items.length} {group.items.length === 1 ? 'тренировка' : 
+                      group.items.length < 5 ? 'тренировки' : 'тренировок'}
+                  </span>
+                  <button className="p-1 rounded-full hover:bg-accent transition-colors">
+                    <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        </DndContext>
+
+              <div className="space-y-2">
+                {group.items.map((workout) => (
+                  <WorkoutCard
+                    key={workout.id}
+                    date={workout.date}
+                    name={workout.name}
+                    durationMinutes={workout.durationMinutes}
+                    totalVolume={workout.totalVolume}
+                    onClick={() => navigate(`/workouts/${workout.id}`)}
+                    onNameChange={(newName) => handleNameChange(workout.id!, newName)}
+                    onDelete={() => handleDeleteClick(workout.id!, workout.name)}
+                    timerRunning={workout.timerRunning}
+                    timerAccumulatedMs={workout.timerAccumulatedMs}
+                    timerLastStartedAt={workout.timerLastStartedAt}
+                    isCompleted={!!workout.completedAt}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
