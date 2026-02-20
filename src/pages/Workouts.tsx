@@ -167,6 +167,7 @@ export function Workouts() {
                     timerAccumulatedMs={workout.timerAccumulatedMs}
                     timerLastStartedAt={workout.timerLastStartedAt}
                     isCompleted={!!workout.completedAt}
+                    isHighlighted={workout.date === selectedDate.toISOString().split('T')[0]}
                   />
                 ))}
               </div>

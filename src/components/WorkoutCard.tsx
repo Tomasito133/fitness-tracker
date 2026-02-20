@@ -17,6 +17,7 @@ interface WorkoutCardProps {
   timerAccumulatedMs?: number;
   timerLastStartedAt?: Date;
   isCompleted?: boolean;
+  isHighlighted?: boolean;
 }
 
 export function WorkoutCard({
@@ -33,6 +34,7 @@ export function WorkoutCard({
   timerAccumulatedMs,
   timerLastStartedAt,
   isCompleted,
+  isHighlighted,
 }: WorkoutCardProps) {
   const dayName = getDayOfWeekName(date);
   const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
@@ -109,7 +111,8 @@ export function WorkoutCard({
     <div
       className={cn(
         'relative flex bg-card rounded-xl overflow-hidden transition-all',
-        onClick && !isEditing && 'cursor-pointer hover:bg-accent/50'
+        onClick && !isEditing && 'cursor-pointer hover:bg-accent/50',
+        isHighlighted && 'ring-2 ring-primary bg-primary/5'
       )}
       onClick={isEditing ? undefined : onClick}
       onMouseEnter={() => setShowActions(true)}
