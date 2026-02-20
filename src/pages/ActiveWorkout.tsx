@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, ChevronDown, MoreHorizontal, Heart, Share2, Pencil, Dumbbell, GripVertical } from 'lucide-react';
+import { Plus, ChevronDown, MoreHorizontal, Heart, Share2, Pencil, Dumbbell, GripVertical, Check } from 'lucide-react';
 import { db, type Exercise, type WorkoutSet } from '../db';
 import { Button } from '../components/ui';
 import { ExercisePicker } from '../components/ExercisePicker';
@@ -113,6 +113,7 @@ export function ActiveWorkout() {
   const [lastStartTime, setLastStartTime] = useState<Date | null>(null);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [timerRestored, setTimerRestored] = useState(false);
+  const [saveJustCompleted, setSaveJustCompleted] = useState(false);
 
   const workout = useLiveQuery(
     () => workoutId ? db.workouts.get(workoutId) : undefined,
@@ -317,7 +318,7 @@ export function ActiveWorkout() {
     setShowExercisePicker(false);
   };
 
-  const handleSaveWorkout = async () => {
+  const handleSaveWorkout = async (onAfterSaveAnimation?: () => void) => {
     if (!workoutId) return;
     
     for (const exerciseData of exercisesWithSets) {
@@ -345,6 +346,11 @@ export function ActiveWorkout() {
     }
     const order = exercisesWithSets.map(e => e.exercise.id!);
     await db.workouts.update(workoutId, { exerciseOrder: order });
+    setSaveJustCompleted(true);
+    window.setTimeout(() => {
+      setSaveJustCompleted(false);
+      onAfterSaveAnimation?.();
+    }, 1800);
   };
 
   const handleFinishWorkout = async () => {
@@ -562,10 +568,21 @@ export function ActiveWorkout() {
               <Plus className="w-6 h-6" />
             </button>
             <button
-              onClick={handleSaveWorkout}
-              className="px-6 py-3 rounded-full border border-border bg-background hover:bg-accent font-medium"
+              onClick={() => handleSaveWorkout()}
+              className={`px-6 py-3 rounded-full font-medium transition-all duration-300 flex items-center gap-2 ${
+                saveJustCompleted
+                  ? 'bg-green-500 text-white scale-105'
+                  : 'border border-border bg-background hover:bg-accent'
+              }`}
             >
-              Сохранить
+              {saveJustCompleted ? (
+                <>
+                  <Check className="w-5 h-5" />
+                  Сохранено
+                </>
+              ) : (
+                'Сохранить'
+              )}
             </button>
             {isWorkoutRunning ? (
               <button
@@ -622,12 +639,22 @@ export function ActiveWorkout() {
             </button>
             <button
               onClick={async () => {
-                await handleSaveWorkout();
-                setIsEditing(false);
+                await handleSaveWorkout(() => setIsEditing(false));
               }}
-              className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-medium"
+              className={`px-8 py-3 rounded-full font-medium transition-all duration-300 flex items-center justify-center gap-2 min-w-[120px] ${
+                saveJustCompleted
+                  ? 'bg-green-500 text-white'
+                  : 'bg-primary text-primary-foreground'
+              }`}
             >
-              Сохранить
+              {saveJustCompleted ? (
+                <>
+                  <Check className="w-5 h-5" />
+                  Сохранено
+                </>
+              ) : (
+                'Сохранить'
+              )}
             </button>
           </>
         ) : (
