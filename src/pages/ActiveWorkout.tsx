@@ -194,7 +194,7 @@ export function ActiveWorkout() {
     
     for (const exerciseData of exercisesWithSets) {
       for (const set of exerciseData.sets) {
-        if (!set.id && set.weight > 0 && set.reps > 0) {
+        if (!set.id) {
           const newId = await db.workoutSets.add({
             workoutId,
             exerciseId: set.exerciseId,
@@ -206,6 +206,12 @@ export function ActiveWorkout() {
           });
           set.id = newId as number;
           set.isNew = false;
+        } else if (set.id) {
+          await db.workoutSets.update(set.id, {
+            weight: set.weight,
+            reps: set.reps,
+            completedAt: set.completedAt,
+          });
         }
       }
     }
