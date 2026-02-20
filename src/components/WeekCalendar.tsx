@@ -6,6 +6,7 @@ interface WeekCalendarProps {
   selectedDate: Date;
   onDateChange: (date: Date) => void;
   onWeekChange?: (direction: 'prev' | 'next') => void;
+  onDayDoubleClick?: (date: Date) => void;
   workoutDates?: string[];
 }
 
@@ -15,6 +16,7 @@ export function WeekCalendar({
   selectedDate,
   onDateChange,
   onWeekChange,
+  onDayDoubleClick,
   workoutDates = [],
 }: WeekCalendarProps) {
   const [showMiniCalendar, setShowMiniCalendar] = useState(false);
@@ -189,7 +191,9 @@ export function WeekCalendar({
             return (
               <button
                 key={dateStr}
+                type="button"
                 onClick={() => onDateChange(date)}
+                onDoubleClick={() => onDayDoubleClick?.(date)}
                 className={cn(
                   'flex flex-col items-center py-2 px-3 rounded-xl transition-colors min-w-[44px]',
                   isToday && !isSelected && 'bg-primary/10',
