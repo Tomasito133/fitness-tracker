@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Check, X, Trash2 } from 'lucide-react';
 import { Button, Input } from './ui';
 import { cn } from '../lib/utils';
@@ -24,14 +24,36 @@ export function SetInput({
   onDelete,
   previousSet,
 }: SetInputProps) {
-  const [weight, setWeight] = useState(defaultWeight || previousSet?.weight || 0);
-  const [reps, setReps] = useState(defaultReps || previousSet?.reps || 0);
+  const [weight, setWeight] = useState(defaultWeight);
+  const [reps, setReps] = useState(defaultReps);
   const [isEditing, setIsEditing] = useState(!isCompleted);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadRef = useRef(true);
 
   useEffect(() => {
-    setWeight(defaultWeight || previousSet?.weight || 0);
-    setReps(defaultReps || previousSet?.reps || 0);
+    if (initialLoadRef.current) {
+      setWeight(defaultWeight !== 0 ? defaultWeight : (previousSet?.weight ?? 0));
+      setReps(defaultReps !== 0 ? defaultReps : (previousSet?.reps ?? 0));
+      initialLoadRef.current = false;
+    }
   }, [defaultWeight, defaultReps, previousSet?.weight, previousSet?.reps]);
+
+  useEffect(() => {
+    if (!initialLoadRef.current && onChange) {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = setTimeout(() => {
+        onChange(weight, reps);
+      }, 300);
+    }
+    
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [weight, reps, onChange]);
 
   const handleComplete = () => {
     if (reps > 0) {
@@ -42,20 +64,6 @@ export function SetInput({
 
   const handleEdit = () => {
     setIsEditing(true);
-  };
-
-  const handleWeightChange = (value: number) => {
-    setWeight(value);
-  };
-
-  const handleRepsChange = (value: number) => {
-    setReps(value);
-  };
-
-  const handleBlur = () => {
-    if (onChange) {
-      onChange(weight, reps);
-    }
   };
 
   return (
@@ -79,8 +87,7 @@ export function SetInput({
               <Input
                 type="number"
                 value={weight || ''}
-                onChange={(e) => handleWeightChange(Number(e.target.value))}
-                onBlur={handleBlur}
+                onChange={(e) => setWeight(Number(e.target.value))}
                 placeholder="0"
                 className="h-9 text-center"
                 inputMode="decimal"
@@ -91,8 +98,7 @@ export function SetInput({
               <Input
                 type="number"
                 value={reps || ''}
-                onChange={(e) => handleRepsChange(Number(e.target.value))}
-                onBlur={handleBlur}
+                onChange={(e) => setReps(Number(e.target.value))}
                 placeholder="0"
                 className="h-9 text-center"
                 inputMode="numeric"
