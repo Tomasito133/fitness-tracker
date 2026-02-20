@@ -251,7 +251,7 @@ export function ActiveWorkout() {
   };
 
   useEffect(() => {
-    if (savedSets && savedSets.length > 0 && exercises) {
+    if (savedSets && savedSets.length > 0 && exercises && workout) {
       const grouped = savedSets.reduce((acc, set) => {
         if (!acc[set.exerciseId]) {
           const exercise = exercises.find(e => e.id === set.exerciseId);
@@ -265,9 +265,21 @@ export function ActiveWorkout() {
         return acc;
       }, {} as Record<number, ExerciseWithSets>);
       
-      setExercisesWithSets(Object.values(grouped));
+      let list = Object.values(grouped);
+      const order = workout.exerciseOrder;
+      if (order && order.length > 0) {
+        const byId = new Map(list.map(e => [e.exercise.id!, e]));
+        const ordered: ExerciseWithSets[] = [];
+        for (const id of order) {
+          const item = byId.get(id);
+          if (item) ordered.push(item);
+        }
+        const rest = list.filter(e => !order.includes(e.exercise.id!));
+        list = [...ordered, ...rest];
+      }
+      setExercisesWithSets(list);
     }
-  }, [savedSets, exercises]);
+  }, [savedSets, exercises, workout]);
 
   const selectedExerciseIds = useMemo(
     () => exercisesWithSets.map(e => e.exercise.id!),
@@ -331,6 +343,8 @@ export function ActiveWorkout() {
         }
       }
     }
+    const order = exercisesWithSets.map(e => e.exercise.id!);
+    await db.workouts.update(workoutId, { exerciseOrder: order });
   };
 
   const handleFinishWorkout = async () => {
@@ -546,6 +560,12 @@ export function ActiveWorkout() {
               className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center"
             >
               <Plus className="w-6 h-6" />
+            </button>
+            <button
+              onClick={handleSaveWorkout}
+              className="px-6 py-3 rounded-full border border-border bg-background hover:bg-accent font-medium"
+            >
+              Сохранить
             </button>
             {isWorkoutRunning ? (
               <button

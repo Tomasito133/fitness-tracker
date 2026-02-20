@@ -23,6 +23,8 @@ export interface Workout {
   timerRunning?: boolean;
   timerAccumulatedMs?: number;
   timerLastStartedAt?: Date;
+  // Exercise display order (exercise IDs)
+  exerciseOrder?: number[];
 }
 
 export interface WorkoutSet {
