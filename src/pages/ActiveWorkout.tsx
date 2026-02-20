@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, ChevronDown, MoreHorizontal, Heart, Share2, Pencil, Dumbbell, GripVertical, Check } from 'lucide-react';
+import { Plus, ChevronDown, MoreHorizontal, Heart, Share2, Pencil, Dumbbell, GripVertical, Check, Trash2 } from 'lucide-react';
 import { db, type Exercise, type WorkoutSet } from '../db';
 import { Button } from '../components/ui';
 import { ExercisePicker } from '../components/ExercisePicker';
@@ -36,6 +36,7 @@ interface SortableExerciseItemProps {
   exerciseIndex: number;
   isEditing: boolean;
   onClick: () => void;
+  onDelete?: () => void;
   formatSetsCompact: (sets: WorkoutSet[]) => string;
 }
 
@@ -45,6 +46,7 @@ function SortableExerciseItem({
   exerciseIndex, 
   isEditing,
   onClick,
+  onDelete,
   formatSetsCompact,
 }: SortableExerciseItemProps) {
   const {
@@ -66,19 +68,19 @@ function SortableExerciseItem({
     <div 
       ref={setNodeRef}
       style={style}
-      className={`flex gap-2 py-4 border-b border-border/50 ${isEditing ? 'cursor-pointer hover:bg-accent/30 transition-colors' : ''}`}
+      className={`flex gap-2 py-4 border-b border-border/50 items-center ${isEditing ? 'cursor-pointer hover:bg-accent/30 transition-colors' : ''}`}
     >
       {isEditing && (
         <button
           {...attributes}
           {...listeners}
-          className="p-1 cursor-grab active:cursor-grabbing touch-none self-center"
+          className="p-1 cursor-grab active:cursor-grabbing touch-none self-center shrink-0"
         >
           <GripVertical className="w-5 h-5 text-muted-foreground" />
         </button>
       )}
       <div 
-        className="flex gap-4 flex-1"
+        className="flex gap-4 flex-1 min-w-0"
         onClick={onClick}
       >
         <span className="text-muted-foreground w-6 shrink-0">{exerciseIndex + 1}</span>
@@ -89,6 +91,19 @@ function SortableExerciseItem({
           </p>
         </div>
       </div>
+      {isEditing && onDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="p-2 rounded-full hover:bg-destructive/10 text-destructive shrink-0"
+          title="Удалить упражнение"
+        >
+          <Trash2 className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 }
@@ -318,6 +333,14 @@ export function ActiveWorkout() {
     setShowExercisePicker(false);
   };
 
+  const handleRemoveExercise = async (exerciseData: ExerciseWithSets) => {
+    if (!workoutId) return;
+    const exerciseId = exerciseData.exercise.id!;
+    const setsToDelete = await db.workoutSets.where('workoutId').equals(workoutId).filter((s) => s.exerciseId === exerciseId).toArray();
+    await db.workoutSets.bulkDelete(setsToDelete.map((s) => s.id!));
+    setExercisesWithSets((prev) => prev.filter((e) => e.exercise.id !== exerciseId));
+  };
+
   const handleSaveWorkout = async (onAfterSaveAnimation?: () => void) => {
     if (!workoutId) return;
     
@@ -538,6 +561,7 @@ export function ActiveWorkout() {
                 exerciseIndex={exerciseIndex}
                 isEditing={isEditing}
                 onClick={() => isEditing && navigate(`/workouts/${workoutId}/exercise/${exerciseIndex}`)}
+                onDelete={() => handleRemoveExercise(exerciseData)}
                 formatSetsCompact={formatSetsCompact}
               />
             ))}
