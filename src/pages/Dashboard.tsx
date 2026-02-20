@@ -1,21 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
 import { Dumbbell, Utensils, Pill, Ruler, Droplets, TrendingUp, Flame, ChevronRight, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, Button } from '../components/ui';
-import { Dialog } from '../components/ui/Dialog';
 import { db } from '../db';
 import { getTodayString, formatShortDate } from '../lib/utils';
 
 export function Dashboard() {
   const navigate = useNavigate();
   const today = getTodayString();
-  const [activeWorkoutWarning, setActiveWorkoutWarning] = useState<{ id: number; name: string } | null>(null);
-
-  // Find active (unfinished) workout
-  const activeWorkout = useLiveQuery(
-    () => db.workouts.filter(w => !w.completedAt).first()
-  );
 
   const todayWorkouts = useLiveQuery(
     () => db.workouts.where('date').equals(today).toArray(),
@@ -66,37 +59,12 @@ export function Dashboard() {
   const calorieGoal = nutritionGoal?.calories || 2000;
 
   const handleStartWorkout = async () => {
-    // Check if there's an active workout
-    if (activeWorkout) {
-      setActiveWorkoutWarning({ id: activeWorkout.id!, name: activeWorkout.name });
-      return;
-    }
-    
-    await createNewWorkout();
-  };
-
-  const createNewWorkout = async () => {
     const workoutId = await db.workouts.add({
       name: 'Тренировка',
       date: today,
       startedAt: new Date(),
     });
     navigate(`/workouts/${workoutId}`);
-  };
-
-  const handleFinishActiveAndStartNew = async () => {
-    if (activeWorkout?.id) {
-      await db.workouts.update(activeWorkout.id, { completedAt: new Date() });
-    }
-    setActiveWorkoutWarning(null);
-    await createNewWorkout();
-  };
-
-  const handleGoToActiveWorkout = () => {
-    if (activeWorkout?.id) {
-      navigate(`/workouts/${activeWorkout.id}`);
-    }
-    setActiveWorkoutWarning(null);
   };
 
   return (
@@ -246,39 +214,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
-      <Dialog
-        open={!!activeWorkoutWarning}
-        onOpenChange={(open) => !open && setActiveWorkoutWarning(null)}
-        title="Есть незавершённая тренировка"
-      >
-        <div className="space-y-4">
-          <p className="text-muted-foreground">
-            У вас есть активная тренировка "{activeWorkoutWarning?.name}". 
-            Что вы хотите сделать?
-          </p>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={handleGoToActiveWorkout}
-              className="w-full px-4 py-3 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
-            >
-              Продолжить текущую
-            </button>
-            <button
-              onClick={handleFinishActiveAndStartNew}
-              className="w-full px-4 py-3 rounded-lg bg-accent text-foreground hover:bg-accent/80 transition-colors"
-            >
-              Завершить и начать новую
-            </button>
-            <button
-              onClick={() => setActiveWorkoutWarning(null)}
-              className="w-full px-4 py-2 rounded-lg hover:bg-accent/50 transition-colors text-muted-foreground"
-            >
-              Отмена
-            </button>
-          </div>
-        </div>
-      </Dialog>
     </div>
   );
 }
