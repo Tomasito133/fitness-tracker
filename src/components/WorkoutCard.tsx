@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Clock, Weight, Heart, Flame, GripVertical, Pencil, Trash2 } from 'lucide-react';
-import { getDayOfWeekName, formatDuration, cn } from '../lib/utils';
+import { getDayOfWeekName, formatDuration, formatDurationWithSeconds, cn } from '../lib/utils';
 
 interface WorkoutCardProps {
   date: string;
@@ -15,6 +15,11 @@ interface WorkoutCardProps {
   onDelete?: () => void;
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   isDragging?: boolean;
+  // Timer state for active workouts
+  timerRunning?: boolean;
+  timerAccumulatedMs?: number;
+  timerLastStartedAt?: Date;
+  isCompleted?: boolean;
 }
 
 export function WorkoutCard({
@@ -30,6 +35,10 @@ export function WorkoutCard({
   onDelete,
   dragHandleProps,
   isDragging,
+  timerRunning,
+  timerAccumulatedMs,
+  timerLastStartedAt,
+  isCompleted,
 }: WorkoutCardProps) {
   const dayName = getDayOfWeekName(date);
   const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
@@ -37,6 +46,7 @@ export function WorkoutCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(name);
   const [showActions, setShowActions] = useState(false);
+  const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -49,6 +59,27 @@ export function WorkoutCard({
       inputRef.current.select();
     }
   }, [isEditing]);
+
+  // Update timer every second for active workouts
+  useEffect(() => {
+    if (isCompleted || !timerRunning || !timerLastStartedAt) {
+      // For non-running workouts, just show accumulated time
+      setCurrentTimeMs(timerAccumulatedMs || 0);
+      return;
+    }
+
+    const updateTime = () => {
+      const accumulated = timerAccumulatedMs || 0;
+      const elapsed = Date.now() - new Date(timerLastStartedAt).getTime();
+      setCurrentTimeMs(accumulated + elapsed);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [timerRunning, timerAccumulatedMs, timerLastStartedAt, isCompleted]);
+
+  const isActiveWorkout = !isCompleted && (timerRunning || (timerAccumulatedMs && timerAccumulatedMs > 0));
 
   const handleSave = () => {
     const trimmedName = editedName.trim() || 'Тренировка';
@@ -153,7 +184,11 @@ export function WorkoutCard({
         <div className="flex items-center gap-3 mt-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
-            <span>{formatDuration(durationMinutes)}</span>
+            <span>
+              {isActiveWorkout 
+                ? formatDurationWithSeconds(currentTimeMs)
+                : formatDuration(durationMinutes)}
+            </span>
           </div>
           
           <span className="text-muted-foreground/50">•</span>

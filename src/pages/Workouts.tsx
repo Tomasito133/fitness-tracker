@@ -37,7 +37,6 @@ export function Workouts() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
-  const [, setTick] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -59,18 +58,6 @@ export function Workouts() {
   );
 
   const allSets = useLiveQuery(() => db.workoutSets.toArray());
-
-  // Update timer display every minute for active workouts
-  useEffect(() => {
-    const hasActiveWorkout = workouts?.some(w => w.timerRunning && !w.completedAt);
-    if (!hasActiveWorkout) return;
-    
-    const interval = setInterval(() => {
-      setTick(t => t + 1);
-    }, 60000);
-    
-    return () => clearInterval(interval);
-  }, [workouts]);
 
   const workoutDates = useMemo(() => {
     return workouts?.map(w => w.date) || [];
@@ -231,6 +218,10 @@ export function Workouts() {
                         onClick={() => navigate(`/workouts/${workout.id}`)}
                         onNameChange={(newName) => handleNameChange(workout.id!, newName)}
                         onDelete={() => handleDeleteClick(workout.id!, workout.name)}
+                        timerRunning={workout.timerRunning}
+                        timerAccumulatedMs={workout.timerAccumulatedMs}
+                        timerLastStartedAt={workout.timerLastStartedAt}
+                        isCompleted={!!workout.completedAt}
                       />
                     ))}
                   </div>

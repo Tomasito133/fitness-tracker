@@ -12,6 +12,10 @@ interface SortableWorkoutCardProps {
   onClick?: () => void;
   onNameChange?: (newName: string) => void;
   onDelete?: () => void;
+  timerRunning?: boolean;
+  timerAccumulatedMs?: number;
+  timerLastStartedAt?: Date;
+  isCompleted?: boolean;
 }
 
 export function SortableWorkoutCard({
@@ -24,6 +28,10 @@ export function SortableWorkoutCard({
   onClick,
   onNameChange,
   onDelete,
+  timerRunning,
+  timerAccumulatedMs,
+  timerLastStartedAt,
+  isCompleted,
 }: SortableWorkoutCardProps) {
   const {
     attributes,
@@ -52,6 +60,10 @@ export function SortableWorkoutCard({
         onDelete={onDelete}
         dragHandleProps={{ ...attributes, ...listeners }}
         isDragging={isDragging}
+        timerRunning={timerRunning}
+        timerAccumulatedMs={timerAccumulatedMs}
+        timerLastStartedAt={timerLastStartedAt}
+        isCompleted={isCompleted}
       />
     </div>
   );
