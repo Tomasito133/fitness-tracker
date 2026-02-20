@@ -26,8 +26,10 @@ export function ActiveWorkout() {
   
   const [showExercisePicker, setShowExercisePicker] = useState(false);
   const [exercisesWithSets, setExercisesWithSets] = useState<ExerciseWithSets[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [workoutName, setWorkoutName] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,8 +46,8 @@ export function ActiveWorkout() {
   const exercises = useLiveQuery(() => db.exercises.toArray());
 
   useEffect(() => {
-    if (workout && !workout.completedAt) {
-      setIsEditing(true);
+    if (workout) {
+      setIsEditing(!workout.completedAt);
     }
   }, [workout]);
 
@@ -229,6 +231,8 @@ export function ActiveWorkout() {
   const handleSaveWorkout = async () => {
     if (!workoutId) return;
     
+    setIsSaving(true);
+    
     for (const exerciseData of exercisesWithSets) {
       for (const set of exerciseData.sets) {
         if (!set.id) {
@@ -252,6 +256,10 @@ export function ActiveWorkout() {
         }
       }
     }
+    
+    setIsSaving(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 2000);
   };
 
   const handleFinishWorkout = async () => {
@@ -487,9 +495,14 @@ export function ActiveWorkout() {
             </button>
             <button
               onClick={handleSaveWorkout}
-              className="px-6 py-3 rounded-full bg-accent text-foreground font-medium"
+              disabled={isSaving}
+              className={`px-6 py-3 rounded-full font-medium transition-colors ${
+                saveSuccess 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-accent text-foreground'
+              }`}
             >
-              Сохранить
+              {isSaving ? 'Сохранение...' : saveSuccess ? 'Сохранено ✓' : 'Сохранить'}
             </button>
             <button
               onClick={handleFinishWorkout}
