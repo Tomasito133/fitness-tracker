@@ -104,28 +104,64 @@ export function ActiveWorkout() {
     [exercisesWithSets]
   );
 
-  const handleAddExercise = (exercise: Exercise) => {
+  const handleAddExercise = async (exercise: Exercise) => {
     const existing = exercisesWithSets.find(e => e.exercise.id === exercise.id);
-    if (!existing) {
-      setExercisesWithSets([...exercisesWithSets, { exercise, sets: [] }]);
+    if (!existing && workoutId) {
+      const newSetId = await db.workoutSets.add({
+        workoutId,
+        exerciseId: exercise.id!,
+        setNumber: 1,
+        weight: 0,
+        reps: 0,
+        restSeconds: defaultRestSeconds,
+        completedAt: new Date(),
+      });
+      
+      setExercisesWithSets([...exercisesWithSets, { 
+        exercise, 
+        sets: [{
+          id: newSetId as number,
+          workoutId,
+          exerciseId: exercise.id!,
+          setNumber: 1,
+          weight: 0,
+          reps: 0,
+          restSeconds: defaultRestSeconds,
+          completedAt: new Date(),
+          isNew: false,
+        }] 
+      }]);
     }
     setShowExercisePicker(false);
   };
 
-  const handleAddSet = (exerciseIndex: number) => {
+  const handleAddSet = async (exerciseIndex: number) => {
+    if (!workoutId) return;
+    
     const updated = [...exercisesWithSets];
     const lastSet = updated[exerciseIndex].sets[updated[exerciseIndex].sets.length - 1];
+    const newSetNumber = updated[exerciseIndex].sets.length + 1;
+    
+    const newSetId = await db.workoutSets.add({
+      workoutId,
+      exerciseId: updated[exerciseIndex].exercise.id!,
+      setNumber: newSetNumber,
+      weight: lastSet?.weight || 0,
+      reps: 0,
+      restSeconds: defaultRestSeconds,
+      completedAt: new Date(),
+    });
     
     updated[exerciseIndex].sets.push({
-      id: undefined,
-      workoutId: workoutId || 0,
+      id: newSetId as number,
+      workoutId,
       exerciseId: updated[exerciseIndex].exercise.id!,
-      setNumber: updated[exerciseIndex].sets.length + 1,
+      setNumber: newSetNumber,
       reps: 0,
       weight: lastSet?.weight || 0,
       restSeconds: defaultRestSeconds,
       completedAt: new Date(),
-      isNew: true,
+      isNew: false,
     });
     
     setExercisesWithSets(updated);
