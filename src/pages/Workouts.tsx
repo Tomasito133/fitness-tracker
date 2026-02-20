@@ -73,6 +73,10 @@ export function Workouts() {
     navigate(`/workouts/${workoutId}`);
   };
 
+  const handleNameChange = async (workoutId: number, newName: string) => {
+    await db.workouts.update(workoutId, { name: newName });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -124,6 +128,7 @@ export function Workouts() {
                     totalVolume={workout.totalVolume}
                     accentColor={workout.accentColor}
                     onClick={() => navigate(`/workouts/${workout.id}`)}
+                    onNameChange={(newName) => handleNameChange(workout.id!, newName)}
                   />
                 ))}
               </div>
