@@ -28,10 +28,14 @@ export function ActiveWorkout() {
   const [exercisesWithSets, setExercisesWithSets] = useState<ExerciseWithSets[]>([]);
   const [isEditing, setIsEditing] = useState(true);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [workoutName, setWorkoutName] = useState('');
   const nameInputRef = useRef<HTMLInputElement>(null);
+  
+  // Workout timer states
+  const [isWorkoutRunning, setIsWorkoutRunning] = useState(false);
+  const [accumulatedTimeMs, setAccumulatedTimeMs] = useState(0);
+  const [lastStartTime, setLastStartTime] = useState<Date | null>(null);
+  const [currentTimeMs, setCurrentTimeMs] = useState(0);
 
   const workout = useLiveQuery(
     () => workoutId ? db.workouts.get(workoutId) : undefined,
@@ -63,6 +67,39 @@ export function ActiveWorkout() {
       nameInputRef.current.select();
     }
   }, [isEditingName]);
+
+  // Update timer every second when workout is running
+  useEffect(() => {
+    if (!isWorkoutRunning || !lastStartTime) return;
+    
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastStartTime.getTime();
+      setCurrentTimeMs(accumulatedTimeMs + elapsed);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [isWorkoutRunning, lastStartTime, accumulatedTimeMs]);
+
+  const handleStartWorkout = () => {
+    setLastStartTime(new Date());
+    setIsWorkoutRunning(true);
+  };
+
+  const handlePauseWorkout = () => {
+    if (lastStartTime) {
+      const elapsed = Date.now() - lastStartTime.getTime();
+      setAccumulatedTimeMs(prev => prev + elapsed);
+      setCurrentTimeMs(accumulatedTimeMs + elapsed);
+    }
+    setIsWorkoutRunning(false);
+    setLastStartTime(null);
+  };
+
+  const handleResumeWorkout = () => {
+    setLastStartTime(new Date());
+    setIsWorkoutRunning(true);
+  };
 
   const handleSaveName = async () => {
     const trimmedName = workoutName.trim() || 'Тренировка';
@@ -231,8 +268,6 @@ export function ActiveWorkout() {
   const handleSaveWorkout = async () => {
     if (!workoutId) return;
     
-    setIsSaving(true);
-    
     for (const exerciseData of exercisesWithSets) {
       for (const set of exerciseData.sets) {
         if (!set.id) {
@@ -256,13 +291,17 @@ export function ActiveWorkout() {
         }
       }
     }
-    
-    setIsSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2000);
   };
 
   const handleFinishWorkout = async () => {
+    // Stop timer if running
+    if (isWorkoutRunning && lastStartTime) {
+      const elapsed = Date.now() - lastStartTime.getTime();
+      setAccumulatedTimeMs(prev => prev + elapsed);
+      setIsWorkoutRunning(false);
+      setLastStartTime(null);
+    }
+    
     await handleSaveWorkout();
     if (workoutId) {
       await db.workouts.update(workoutId, { completedAt: new Date() });
@@ -277,10 +316,15 @@ export function ActiveWorkout() {
 
   const durationMinutes = useMemo(() => {
     if (!workout) return 0;
-    const start = new Date(workout.startedAt).getTime();
-    const end = workout.completedAt ? new Date(workout.completedAt).getTime() : Date.now();
-    return Math.round((end - start) / 60000);
-  }, [workout]);
+    // For completed workouts, use saved duration
+    if (workout.completedAt) {
+      const start = new Date(workout.startedAt).getTime();
+      const end = new Date(workout.completedAt).getTime();
+      return Math.round((end - start) / 60000);
+    }
+    // For active workouts, use timer state
+    return Math.round(currentTimeMs / 60000);
+  }, [workout, currentTimeMs]);
 
   const startTime = workout?.startedAt ? new Date(workout.startedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
 
@@ -466,38 +510,44 @@ export function ActiveWorkout() {
             >
               <Plus className="w-6 h-6" />
             </button>
-            <button
-              onClick={handleSaveWorkout}
-              disabled={isSaving}
-              className={`px-6 py-3 rounded-full font-medium transition-all duration-300 transform ${
-                saveSuccess 
-                  ? 'bg-green-500 text-white scale-105 shadow-lg shadow-green-500/30' 
-                  : isSaving
-                    ? 'bg-accent/70 text-foreground/70'
-                    : 'bg-accent text-foreground hover:scale-105'
-              }`}
-            >
-              <span className={`flex items-center gap-2 ${saveSuccess ? 'animate-pulse' : ''}`}>
-                {isSaving ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Сохранение
-                  </>
-                ) : saveSuccess ? (
-                  <>
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Сохранено
-                  </>
-                ) : (
-                  'Сохранить'
-                )}
-              </span>
-            </button>
+            {isWorkoutRunning ? (
+              <button
+                onClick={handlePauseWorkout}
+                className="px-6 py-3 rounded-full font-medium transition-all duration-300 transform bg-yellow-500 text-white hover:scale-105"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                  </svg>
+                  Остановить
+                </span>
+              </button>
+            ) : accumulatedTimeMs > 0 ? (
+              <button
+                onClick={handleResumeWorkout}
+                className="px-6 py-3 rounded-full font-medium transition-all duration-300 transform bg-green-500 text-white hover:scale-105"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Продолжить
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={handleStartWorkout}
+                className="px-6 py-3 rounded-full font-medium transition-all duration-300 transform bg-green-500 text-white hover:scale-105"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Начать
+                </span>
+              </button>
+            )}
             <button
               onClick={handleFinishWorkout}
               className="px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium"
