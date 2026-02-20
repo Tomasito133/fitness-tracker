@@ -181,7 +181,7 @@ export function groupByWeek<T extends { date: string }>(items: T[]): WeekGroup<T
       dateRange: formatWeekRange(startDate, endDate),
       startDate,
       endDate,
-      items: items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      items: items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     });
   }
   
